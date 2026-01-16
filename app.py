@@ -254,14 +254,7 @@ def index():
         '''
     }
     
-    css = css_themes.get(design, css_themes['basic'])
-    
-    html = f'''<!DOCTYPE html>
-<html><head><title>🚀 Узнавайкин v32</title>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<style>
-{css}
+    css = css_themes.get(design, css_themes['basic']) + """
 * {margin:0;padding:0;box-sizing:border-box;}
 body {font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;line-height:1.6;min-height:100vh;padding:10px;overflow-x:hidden;}
 .container {max-width:1200px;margin:0 auto;border-radius:25px;overflow:hidden;}
@@ -282,7 +275,7 @@ h1 {font-size:2.5em;margin:0;font-weight:700;}
 .delete-btn {position:absolute;top:5px;right:5px;background:#ff4757;color:white;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;font-weight:bold;display:none;transition:all 0.3s;}
 .chat-msg:hover .delete-btn {display:block;}
 .chat-mute {background:#ffeaa7 !important;border-left:5px solid #fdcb6e;animation:pulse 2s infinite;}
-@keyframes pulse {0%{opacity:1;}50%{opacity:0.7;}100%{opacity:1;}}
+@keyframes pulse {{0%{{opacity:1;}}50%{{opacity:0.7;}}100%{{opacity:1;}}}}  /* ← ✅ ИСПРАВЛЕНО */
 .mute-notice {background:#ff6b8a !important;border-left:5px solid #ee5a6f;padding:15px !important;margin:10px 0 !important;color:#fff !important;}
 #chat-input {padding:25px;border-top:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);}
 input[type="text"] {width:75%;padding:18px;border:2px solid rgba(255,255,255,0.3);border-radius:12px;font-size:18px;background:rgba(255,255,255,0.9);box-sizing:border-box;}
@@ -291,8 +284,8 @@ button:disabled {background:#ddd !important;color:#999 !important;cursor:not-all
 @media (max-width:1200px) {.nav {gap:8px;}.nav-btn {padding:12px 18px;font-size:15px;}}
 @media (max-width:768px) {.stats {grid-template-columns:repeat(3,1fr);gap:10px;padding:15px;margin:10px;}.nav {flex-direction:column;gap:10px;padding:20px;margin:0 10px 20px;}.nav-btn {max-width:none;}input[type="text"] {width:100%;margin-bottom:15px;}button[type="submit"] {width:100%;margin-left:0;}#chat-messages {max-height:350px;padding:15px;}}
 @media (max-width:480px) {body {padding:5px;}.container {border-radius:15px;margin:5px;}.header {padding:20px;}h1 {font-size:2em;}}
-</style></head>
-<body><div class="container">'''
+"""
+
     
     if current_user:
         html += f'<div class="header"><h1>🚀 Узнавайкин v32</h1><p>👤 <b style="font-size:1.2em;">{current_user}</b> | <span style="background:rgba(255,255,255,0.3);padding:8px 15px;border-radius:15px;font-size:1.1em;font-weight:bold;">{get_role_display(current_user)}</span></p></div>'
@@ -759,3 +752,4 @@ input,textarea,button {{font-family:inherit;}}
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
