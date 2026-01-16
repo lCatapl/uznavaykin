@@ -33,7 +33,7 @@ def load_data():
     except:
         pass
     
-    auto_admins = ['CatNap/120187', 'Назар/120187']
+    auto_admins = ['CatNap', 'Назар']
     for username in auto_admins:
         if username not in users:
             users[username] = {'password': '120187', 'role': 'admin'}
@@ -723,3 +723,4 @@ def not_found(e):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
