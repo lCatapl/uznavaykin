@@ -299,7 +299,7 @@ button:disabled {{background:#ddd !important;color:#999 !important;cursor:not-al
     if current_user:
         html += f'<div class="header"><h1>🚀 Узнавайкин v32</h1><p>👤 <b style="font-size:1.2em;">{current_user}</b> | <span style="background:rgba(255,255,255,0.3);padding:8px 15px;border-radius:15px;font-size:1.1em;font-weight:bold;">{get_role_display(current_user)}</span></p></div>'
     else:
-        html += '<div class="header"><h1>🚀 Узнавайкин v32</h1><p style="font-size:1.2em;">Добро пожаловать в лучший чат!</p></div>'
+        html = '<div class="header"><h1>🚀 Узнавайкин v32</h1><p style="font-size:1.2em;">Добро пожаловать в лучший чат!</p></div>'
     
     html += f'''
 <div class="stats">
@@ -762,3 +762,4 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Render default 10000!
 
     app.run(host='0.0.0.0', port=port, debug=False)
+
