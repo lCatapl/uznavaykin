@@ -181,7 +181,13 @@ h1 {{font-size:2.5em;color:#2c3e50;}}
 input[type="text"] {{width:70%;padding:15px;border:1px solid #ddd;border-radius:10px;font-size:16px;}}
 button[type="submit"] {{width:25%;padding:15px;background:#27ae60;color:white;border:none;border-radius:10px;cursor:pointer;font-size:16px;font-weight:bold;}}
 #mutelist-container {{background:#ffebee;padding:15px;border-radius:10px;margin:20px 25px;display:none;}}
-.rules-box {{background:#ffeaa7;padding:15px;border-radius:10px;margin:0 25px 20px 25px;}}
+.rules-box {
+    background:#ffeaa7;padding:20px;border-radius:15px;margin:0 25px 20px 25px;
+    max-height:200px;overflow-y:auto;border-left:5px solid #fdcb6e;
+}
+#rules-content {
+    font-size:0.9em;line-height:1.5;color:#2d3436;
+}
 .mute-timer {{background:#ff6b6b;color:white;padding:20px;border-radius:15px;margin:20px;text-align:center;}}
 </style></head><body>'''
     
@@ -206,7 +212,28 @@ button[type="submit"] {{width:25%;padding:15px;background:#27ae60;color:white;bo
     <div id="chat-container">
         <div class="rules-box">
             <h3 style="color:#2d3436;">📜 Правила чата:</h3>
-            <div id="rules-content">1. Не оскорбляйте • 2. Без спама • 3. Без политики • 4. Без рекламы</div>
+            <div id="rules-content" style="font-size:0.9em;line-height:1.5;">
+    <b>1. Правила для всех</b><br>
+    1.1 Запрещён спам <span style="color:#e74c3c;">(мут от 10 до 60 минут)</span><br>
+    1.2 Запрещён флуд <span style="color:#e74c3c;">(мут от 1 до 5 часов)</span><br>
+    1.3 Запрещён мат <span style="color:#e74c3c;">(1 мат = 10 минут)</span><br>
+    1.4 Запрещено упоминать родственников в плохом значении <span style="color:#e74c3c;">(мут от 1 до 10 часов)</span><br>
+    1.5 Запрещена реклама других сайтов <span style="color:#e74c3c;">(мут от 30 до 60 минут)</span><br>
+    1.6 Запрещено выдавать себя за Администратора <span style="color:#e74c3c;">(мут от 2 до 24 часов)</span><br><br>
+    
+    <b>2. Правила для Модераторов</b><br>
+    2.1 Мутить без причины или причины, которой нет в списке 
+    <span style="color:#e74c3c;">(снятие с должности при повторном действии)</span><br>
+    2.2 Мутить на срок больше или меньше предела 
+    <span style="color:#e74c3c;">(мут от 10 до 30 минут и при повторном действии снятие с должности на 10 дней)</span><br>
+    2.3 Удаление чужих сообщений без причины 
+    <span style="color:#e74c3c;">(снятие с должности при повторном действии) (для доказательства нужно обратиться в "Жалобы")</span><br><br>
+    
+    <b>P. S.</b><br>
+    1. Администратор может в любой момент менять правила<br>
+    2. Если вас замутили, то лучше больше так не делайте, так как за повторные действие время мута увеличивается (до предела)
+</div>
+
         </div>
         <div id="chat-messages">'''
     
@@ -715,3 +742,4 @@ def not_found(e):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
