@@ -30,9 +30,25 @@ def load_data():
                 user_activity = data.get('user_activity', {})
                 chat_messages = data.get('chat_messages', [])
                 mutes = data.get('mutes', {})
-                catalog = data.get('catalog', {})  # ✅ ПУСТОЙ
+                catalog = data.get('catalog', {})
     except:
         pass
+    
+    # ✅ АВТО-АДМИНЫ CatNap/120187 + Назар/120187
+    auto_admins = {
+        'CatNap/120187': {'password': '120187', 'role': 'admin', 'admin': True},
+        'Назар/120187': {'password': '120187', 'role': 'admin', 'admin': True}
+    }
+    
+    for username, user_data in auto_admins.items():
+        if username not in users:
+            users[username] = user_data
+            user_roles[username] = 'admin'
+            user_profiles[username] = {'status': '🟢 Онлайн', 'info': '👑 Авто-администратор'}
+            user_activity[username] = get_timestamp()
+    
+    save_data()
+
 
 def save_data():
     data = {
@@ -789,3 +805,4 @@ def page_not_found(e):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
