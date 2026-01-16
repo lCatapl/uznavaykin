@@ -35,7 +35,7 @@ def load_data():
         pass
     
     # ✅ АВТО-АДМИНЫ
-    auto_admins = ['CatNap/120187', 'Назар/120187']
+    auto_admins = ['CatNap', 'Назар']
     for username in auto_admins:
         if username not in users:
             users[username] = {'password': '120187', 'role': 'admin'}
@@ -154,42 +154,39 @@ def index():
                     'id': len(chat_messages), 'user': current_user, 'text': message,
                     'time': get_timestamp(), 'role': get_role_display(current_user)
                 })
-            if current_user:
-                user_activity[current_user] = get_timestamp()
+            user_activity[current_user] = get_timestamp()
             save_data()
     
     if current_user:
         user_activity[current_user] = get_timestamp()
     
-    html = f'''<!DOCTYPE html>
+    # ✅ ПОЛНЫЙ CSS ОДИН РАЗ
+    full_css = css + '''
+    .header {padding:30px;text-align:center;background:linear-gradient(45deg,#ff9a9e,#fecfef);}
+    h1 {font-size:2.5em;color:#2c3e50;}
+    .stats {display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:15px;padding:25px;background:#f8f9fa;border-radius:20px;margin:20px 0;}
+    .stats div {text-align:center;padding:15px;background:#fff;border-radius:15px;box-shadow:0 5px 15px rgba(0,0,0,0.1);}
+    .nav {display:flex;flex-wrap:wrap;gap:12px;padding:25px;background:#ecf0f1;border-radius:20px;justify-content:center;}
+    .nav-btn {padding:15px 25px;color:white;text-decoration:none;border-radius:15px;font-weight:bold;transition:all 0.3s;}
+    .nav-btn:hover {transform:translateY(-2px);box-shadow:0 10px 25px rgba(0,0,0,0.2);}
+    #chat-container {max-width:900px;margin:25px auto;background:#f8f9fa;border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.15);}
+    #chat-messages {max-height:450px;overflow-y:auto;padding:25px;background:#fff;}
+    .chat-msg {margin-bottom:15px;padding:20px;background:#f1f3f4;border-radius:15px;box-shadow:0 2px 10px rgba(0,0,0,0.1);}
+    .chat-header {font-weight:bold;font-size:14px;margin-bottom:8px;color:#2c3e50;}
+    .delete-btn {float:right;background:#e74c3c;color:white;border:none;border-radius:50%;width:25px;height:25px;cursor:pointer;font-size:14px;}
+    #chat-input {padding:20px;background:#ecf0f1;border-top:1px solid #ddd;}
+    input[type="text"] {width:70%;padding:15px;border:1px solid #ddd;border-radius:10px;font-size:16px;}
+    button[type="submit"] {width:25%;padding:15px;background:#27ae60;color:white;border:none;border-radius:10px;cursor:pointer;font-size:16px;font-weight:bold;}
+    #mutelist-container {background:#ffebee;padding:15px;border-radius:10px;margin:20px 25px;display:none;}
+    .rules-box {background:#ffeaa7;padding:20px;border-radius:15px;margin:0 25px 20px 25px;max-height:200px;overflow-y:auto;border-left:5px solid #fdcb6e;}
+    .mute-timer {background:#ff6b6b;color:white;padding:20px;border-radius:15px;margin:20px;text-align:center;}
+    #rules-content {font-size:0.9em;line-height:1.5;color:#2d3436;}
+    '''
+    
+    html = '''<!DOCTYPE html>
 <html><head><title>🚀 Узнавайкин v34</title>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>{css}
-.header {{padding:30px;text-align:center;background:linear-gradient(45deg,#ff9a9e,#fecfef);}}
-h1 {{font-size:2.5em;color:#2c3e50;}}
-.stats {{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:15px;padding:25px;background:#f8f9fa;border-radius:20px;margin:20px 0;}}
-.stats div {{text-align:center;padding:15px;background:#fff;border-radius:15px;box-shadow:0 5px 15px rgba(0,0,0,0.1);}}
-.nav {{display:flex;flex-wrap:wrap;gap:12px;padding:25px;background:#ecf0f1;border-radius:20px;justify-content:center;}}
-.nav-btn {{padding:15px 25px;color:white;text-decoration:none;border-radius:15px;font-weight:bold;transition:all 0.3s;}}
-.nav-btn:hover {{transform:translateY(-2px);box-shadow:0 10px 25px rgba(0,0,0,0.2);}}
-#chat-container {{max-width:900px;margin:25px auto;background:#f8f9fa;border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.15);}}
-#chat-messages {{max-height:450px;overflow-y:auto;padding:25px;background:#fff;}}
-.chat-msg {{margin-bottom:15px;padding:20px;background:#f1f3f4;border-radius:15px;box-shadow:0 2px 10px rgba(0,0,0,0.1);}}
-.chat-header {{font-weight:bold;font-size:14px;margin-bottom:8px;color:#2c3e50;}}
-.delete-btn {{float:right;background:#e74c3c;color:white;border:none;border-radius:50%;width:25px;height:25px;cursor:pointer;font-size:14px;}}
-#chat-input {{padding:20px;background:#ecf0f1;border-top:1px solid #ddd;}}
-input[type="text"] {{width:70%;padding:15px;border:1px solid #ddd;border-radius:10px;font-size:16px;}}
-button[type="submit"] {{width:25%;padding:15px;background:#27ae60;color:white;border:none;border-radius:10px;cursor:pointer;font-size:16px;font-weight:bold;}}
-#mutelist-container {{background:#ffebee;padding:15px;border-radius:10px;margin:20px 25px;display:none;}}
-.rules-box {
-    background:#ffeaa7;padding:20px;border-radius:15px;margin:0 25px 20px 25px;
-    max-height:200px;overflow-y:auto;border-left:5px solid #fdcb6e;
-}
-#rules-content {
-    font-size:0.9em;line-height:1.5;color:#2d3436;
-}
-.mute-timer {{background:#ff6b6b;color:white;padding:20px;border-radius:15px;margin:20px;text-align:center;}}
-</style></head><body>'''
+<style>''' + full_css + '''</style></head><body>'''
     
     html += '<div class="container">'
     if current_user:
@@ -207,33 +204,29 @@ button[type="submit"] {{width:25%;padding:15px;background:#27ae60;color:white;bo
     html += f'<div><b>{stats["admin"]}</b><br>👑 Администратор</div>'
     html += '</div>'
     
-    # ✅ ПРАВИЛА ЧАТА
+    # ✅ НОВЫЕ ПОДРОБНЫЕ ПРАВИЛА
     html += '''
     <div id="chat-container">
         <div class="rules-box">
-            <h3 style="color:#2d3436;">📜 Правила чата:</h3>
-            <div id="rules-content" style="font-size:0.9em;line-height:1.5;">
-    <b>1. Правила для всех</b><br>
-    1.1 Запрещён спам <span style="color:#e74c3c;">(мут от 10 до 60 минут)</span><br>
-    1.2 Запрещён флуд <span style="color:#e74c3c;">(мут от 1 до 5 часов)</span><br>
-    1.3 Запрещён мат <span style="color:#e74c3c;">(1 мат = 10 минут)</span><br>
-    1.4 Запрещено упоминать родственников в плохом значении <span style="color:#e74c3c;">(мут от 1 до 10 часов)</span><br>
-    1.5 Запрещена реклама других сайтов <span style="color:#e74c3c;">(мут от 30 до 60 минут)</span><br>
-    1.6 Запрещено выдавать себя за Администратора <span style="color:#e74c3c;">(мут от 2 до 24 часов)</span><br><br>
-    
-    <b>2. Правила для Модераторов</b><br>
-    2.1 Мутить без причины или причины, которой нет в списке 
-    <span style="color:#e74c3c;">(снятие с должности при повторном действии)</span><br>
-    2.2 Мутить на срок больше или меньше предела 
-    <span style="color:#e74c3c;">(мут от 10 до 30 минут и при повторном действии снятие с должности на 10 дней)</span><br>
-    2.3 Удаление чужих сообщений без причины 
-    <span style="color:#e74c3c;">(снятие с должности при повторном действии) (для доказательства нужно обратиться в "Жалобы")</span><br><br>
-    
-    <b>P. S.</b><br>
-    1. Администратор может в любой момент менять правила<br>
-    2. Если вас замутили, то лучше больше так не делайте, так как за повторные действие время мута увеличивается (до предела)
-</div>
-
+            <h3 style="color:#2d3436;margin-bottom:10px;">📜 Правила чата</h3>
+            <div id="rules-content">
+                <b>1. Правила для всех</b><br>
+                1.1 Запрещён спам <span style="color:#e74c3c;">(мут от 10 до 60 минут)</span><br>
+                1.2 Запрещён флуд <span style="color:#e74c3c;">(мут от 1 до 5 часов)</span><br>
+                1.3 Запрещён мат <span style="color:#e74c3c;">(1 мат = 10 минут)</span><br>
+                1.4 Запрещено упоминать родственников в плохом значении <span style="color:#e74c3c;">(мут от 1 до 10 часов)</span><br>
+                1.5 Запрещена реклама других сайтов <span style="color:#e74c3c;">(мут от 30 до 60 минут)</span><br>
+                1.6 Запрещено выдавать себя за Администратора <span style="color:#e74c3c;">(мут от 2 до 24 часов)</span><br><br>
+                
+                <b>2. Правила для Модераторов</b><br>
+                2.1 Мутить без причины или причины, которой нет в списке <span style="color:#e74c3c;">(снятие с должности при повторном действии)</span><br>
+                2.2 Мутить на срок больше или меньше предела <span style="color:#e74c3c;">(мут от 10 до 30 минут и при повторном действии снятие с должности на 10 дней)</span><br>
+                2.3 Удаление чужих сообщений без причины <span style="color:#e74c3c;">(снятие с должности при повторном действии) (для доказательства нужно обратиться в "Жалобы")</span><br><br>
+                
+                <b>P. S.</b><br>
+                1. Администратор может в любой момент менять правила<br>
+                2. Если вас замутили, то лучше больше так не делайте, так как за повторные действие время мута увеличивается (до предела)
+            </div>
         </div>
         <div id="chat-messages">'''
     
@@ -255,21 +248,21 @@ button[type="submit"] {{width:25%;padding:15px;background:#27ae60;color:white;bo
         html += '<p style="padding:20px;text-align:center;color:#666;font-size:18px;">🔐 Войдите для чата</p>'
     html += '</div></div>'
     
-    # ✅ МУТЛИСТ
+    # Остальной код HTML остается как был...
     html += '''
     <div id="mutelist-container">
         <h4 style="color:#c53030;">🔇 МутЛист</h4>
         <div id="mutelist">Загрузка...</div>
     </div>'''
     
-    # ✅ ТАЙМЕР ДЛЯ ЗАМУЧЕННЫХ
     if current_user and is_muted(current_user):
         end_time = mutes['by'].get(current_user, 0)
+        reason = mutes['reason'].get(current_user, 'Причина не указана')
         html += f'''
         <div class="mute-timer">
             <h3>🔇 Вы замучены!</h3>
             <div id="mute-timer" data-end="{end_time}">Загрузка...</div>
-            <p>{mutes["reason"].get(current_user, "Причина не указана")}</p>
+            <p>{reason}</p>
         </div>'''
     
     html += '<div class="nav">'
@@ -285,13 +278,12 @@ button[type="submit"] {{width:25%;padding:15px;background:#27ae60;color:white;bo
         html += '<a href="/login" class="nav-btn" style="background:#f39c12;">🔐 Войти</a>'
     html += '</div></div>'
     
-    # ✅ НОВЫЙ JAVASCRIPT
+    # JavaScript остается как был...
     html += f'''
     <script>
     let lastMsgCount = {len(chat_messages)};
     const messagesDiv = document.getElementById('chat-messages');
     
-    // ✅ ЧАТ КАЖДЫЕ 2 СЕКУНДЫ
     setInterval(() => {{
         fetch('/api/chat').then(r=>r.json()).then(data => {{
             if(data.html.length > lastMsgCount) {{
@@ -302,7 +294,6 @@ button[type="submit"] {{width:25%;padding:15px;background:#27ae60;color:white;bo
         }});
     }}, 2000);
     
-    // ✅ МУТЛИСТ КАЖДЫЕ СЕКУНДУ
     setInterval(() => {{
         fetch('/api/mutelist').then(r=>r.json()).then(data => {{
             if(data.length > 0) {{
@@ -318,7 +309,6 @@ button[type="submit"] {{width:25%;padding:15px;background:#27ae60;color:white;bo
         }});
     }}, 1000);
     
-    // ✅ ТАЙМЕР МУТА
     const muteTimer = document.getElementById('mute-timer');
     if(muteTimer) {{
         let endTime = parseFloat(muteTimer.dataset.end) * 1000;
@@ -336,7 +326,6 @@ button[type="submit"] {{width:25%;padding:15px;background:#27ae60;color:white;bo
         }}, 1000);
     }}
     
-    // ✅ ПИНГ АКТИВНОСТИ
     setInterval(() => fetch('/api/ping', {{method: 'POST'}}), 30000);
     
     function deleteMessage(msgId) {{
@@ -349,6 +338,7 @@ button[type="submit"] {{width:25%;padding:15px;background:#27ae60;color:white;bo
     }}
     </script></body></html>'''
     return html
+
 
 @app.route('/api/chat')
 def api_chat():
@@ -742,4 +732,5 @@ def not_found(e):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
 
