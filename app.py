@@ -160,7 +160,7 @@ def index():
     
     css = css_themes.get(design, css_themes['basic'])
     
-        html = '''<!DOCTYPE html>
+    html = '''<!DOCTYPE html>
 <html><head><title>🚀 Узнавайкин v32</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -548,3 +548,4 @@ def page_not_found(e):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
