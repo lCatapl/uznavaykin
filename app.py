@@ -39,7 +39,7 @@ def save_data():
     except:
         pass
 
-# ✅ ИНИЦИАЛИЗАЦИЯ ДАННЫХ — БЕЗ ЭМОДЗИ В КЛЮЧАХ
+# ✅ ИНИЦИАЛИЗАЦИЯ — РУССКИЕ ИМЕНА + АДМИНЫ
 data = load_data()
 users = data.get('users', {
     'CatNap': {'password': '120187', 'role': 'admin', 'admin': True},
@@ -54,19 +54,19 @@ mutes = data.get('mutes', {})
 
 catalog = data.get('catalog', {
     'Minecraft': {
-        'Almaz': {'location': 'Minecraft', 'info': 'Самый ценный ресурс!', 'photo': ''},
-        'Zhelezo': {'location': 'Minecraft', 'info': 'Для инструментов', 'photo': ''}
+        'Алмаз': {'location': 'Minecraft', 'info': 'Самый ценный ресурс!', 'photo': ''},
+        'Железо': {'location': 'Minecraft', 'info': 'Для инструментов и брони', 'photo': ''}
     },
     'World_of_Tanks': {
-        'T_34': {'location': 'World of Tanks', 'info': 'Легендарный танк СССР', 'photo': ''},
-        'IS_7': {'location': 'World of Tanks', 'info': 'Тяжелый танк 10 уровня', 'photo': ''}
+        'Т-34': {'location': 'World of Tanks', 'info': 'Легендарный танк СССР', 'photo': ''},
+        'ИС-7': {'location': 'World of Tanks', 'info': 'Тяжелый танк 10 уровня', 'photo': ''}
     }
 })
 
 def get_timestamp(): 
     return time.time()
 
-# ✅ БЕЗ ЭМОДЗИ — Python 3.13 совместимость
+# ✅ РОЛИ — ТЕКСТ ДЛЯ PYTHON (стикеры в HTML)
 def get_role_display(username):
     if users.get(username, {}).get('admin'): 
         return 'Admin'
@@ -115,16 +115,16 @@ def calculate_stats():
             if now - last_activity > 60:  # 1 минута АФК
                 stats['afk'] += 1
         
-        role = user_roles.get(username, 'start')
         if users.get(username, {}).get('admin'):
             stats['admin'] += 1
-        elif username in moderators:
+        elif username in moderators and get_timestamp() < moderators.get(username, 0):
             stats['moderator'] += 1
         else:
+            role = user_roles.get(username, 'start')
             stats[role] = stats.get(role, 0) + 1
     return stats
 
-# ✅ КАТАЛОГ ФУНКЦИИ — РАБОТАЮТ
+# ✅ КАТАЛОГ — ПОЛНАЯ ПОДДЕРЖКА
 def get_catalog_content(path=''):
     current = catalog
     parts = [p.strip() for p in path.split('/') if p.strip()]
@@ -133,14 +133,14 @@ def get_catalog_content(path=''):
         if part in current and isinstance(current[part], dict):
             current = current[part]
         else:
-            return {'error': 'Folder not found: ' + part}
+            return {'error': 'Папка не найдена: ' + part}
     
     folders = [name for name, content in current.items() if isinstance(content, dict)]
     items = {name: content for name, content in current.items() if not isinstance(content, dict)}
     
     return {'folders': folders, 'items': items}
 
-# CSS ТЕМЫ — БЕЗ ЭМОДЗИ
+# ✅ CSS ТЕМЫ — 4 ВАРИАНТА ДИЗАЙНА
 css_themes = {
     'basic': '''
     body {background:linear-gradient(135deg,#f5f7fa,#c3cfe2);}
@@ -194,7 +194,7 @@ def index():
     css = css_themes.get(design, css_themes['basic'])
     
     html = '''<!DOCTYPE html>
-<html><head><title>Uznavaikin v32</title>
+<html><head><title>🚀 Узнавайкин v32</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>''' + css + '''* {margin:0;padding:0;box-sizing:border-box;}
@@ -219,16 +219,16 @@ button[type="submit"] {width:25%;padding:15px;background:#00b894;color:white;bor
     html += '<div class="container">'
     
     if current_user:
-        html += '<div class="header"><h1>Uznavaikin v32</h1><p>User: <b>' + current_user + '</b> | ' + get_role_display(current_user) + '</p></div>'
+        html += '<div class="header"><h1>🚀 Узнавайкин v32</h1><p>👤 <b>' + current_user + '</b> | ' + get_role_display(current_user) + '</p></div>'
     else:
-        html += '<div class="header"><h1>Uznavaikin v32</h1><p>Welcome!</p></div>'
+        html += '<div class="header"><h1>🚀 Узнавайкин v32</h1><p>Добро пожаловать!</p></div>'
     
     html += '<div class="stats">'
-    html += '<div><b>' + str(stats['online']) + '</b><br>Online</div>'
-    html += '<div><b>' + str(stats['afk']) + '</b><br>AFK</div>'
-    html += '<div><b>' + str(stats['start']) + '</b><br>Start</div>'
-    html += '<div><b>' + str(stats['vip']) + '</b><br>VIP</div>'
-    html += '<div><b>' + str(stats['premium']) + '</b><br>Premium</div>'
+    html += '<div><b>' + str(stats['online']) + '</b><br>👥 Онлайн</div>'
+    html += '<div><b>' + str(stats['afk']) + '</b><br>😴 АФК</div>'
+    html += '<div><b>' + str(stats['start']) + '</b><br>📚 Новички</div>'
+    html += '<div><b>' + str(stats['vip']) + '</b><br>⭐ VIP</div>'
+    html += '<div><b>' + str(stats['premium']) + '</b><br>💎 Premium</div>'
     html += '</div>'
     
     html += '<div id="chat-container"><div id="chat-messages">'
@@ -236,7 +236,7 @@ button[type="submit"] {width:25%;padding:15px;background:#00b894;color:white;bor
     for msg in reversed(chat_messages[-50:]):
         delete_btn = ''
         if current_user and (is_admin(current_user) or is_moderator(current_user)) and msg['user'] != current_user:
-            delete_btn = '<button class="delete-btn" onclick="deleteMessage(' + str(msg['id']) + ')">x</button>'
+            delete_btn = '<button class="delete-btn" onclick="deleteMessage(' + str(msg['id']) + ')">×</button>'
         
         html += '<div class="chat-msg">'
         html += delete_btn
@@ -246,22 +246,22 @@ button[type="submit"] {width:25%;padding:15px;background:#00b894;color:white;bor
 
     html += '</div><div id="chat-input">'
     if current_user and not is_muted(current_user):
-        html += '<form method="post" id="chatForm"><input type="text" name="message" id="messageInput" placeholder="Message... (max 300 chars)" maxlength="300"><button type="submit">Send</button></form>'
+        html += '<form method="post" id="chatForm"><input type="text" name="message" id="messageInput" placeholder="/profile @ник или сообщение... (макс. 300 символов)" maxlength="300"><button type="submit">📤 Отправить</button></form>'
     else:
-        html += '<p>Login to chat</p>'
+        html += '<p style="padding:20px;text-align:center;color:#666;">🔐 Войдите для чата</p>'
     html += '</div></div>'
     
     html += '<div class="nav">'
-    html += '<a href="/catalog" class="nav-btn">Catalog</a>'
-    html += '<a href="/profiles" class="nav-btn">Profiles</a>'
-    html += '<a href="/community" class="nav-btn">Community</a>'
+    html += '<a href="/catalog" class="nav-btn">📁 Каталог</a>'
+    html += '<a href="/profiles" class="nav-btn">👥 Профили</a>'
+    html += '<a href="/community" class="nav-btn">💬 Сообщество</a>'
     if current_user:
-        html += '<a href="/profile/' + current_user + '" class="nav-btn">My Profile</a>'
+        html += '<a href="/profile/' + current_user + '" class="nav-btn">👤 Мой профиль</a>'
         if is_admin(current_user):
-            html += '<a href="/admin" class="nav-btn">Admin</a>'
-        html += '<a href="/logout" class="nav-btn">Logout</a>'
+            html += '<a href="/admin" class="nav-btn admin-btn">🔧 Админ</a>'
+        html += '<a href="/logout" class="nav-btn">🚪 Выход</a>'
     else:
-        html += '<a href="/login" class="nav-btn">Login</a>'
+        html += '<a href="/login" class="nav-btn">🔐 Войти</a>'
     html += '</div></div>'
     
     html += '''<script>
@@ -276,12 +276,12 @@ setInterval(() => {
 }, 3000);
 
 function deleteMessage(msgId) {
-    if(confirm('Delete message?')) {
+    if(confirm('Удалить сообщение?')) {
         fetch(`/api/delete_message/${msgId}`, {method: 'DELETE'})
         .then(r => r.json())
         .then(data => {
             if(data.success) location.reload();
-        }).catch(() => alert('Error'));
+        }).catch(() => alert('Ошибка'));
     }
 }
 </script></body></html>'''
@@ -295,14 +295,14 @@ def api_chat_count():
 def api_delete_message(msg_id):
     current_user = session.get('user', '')
     if not current_user or not (is_admin(current_user) or is_moderator(current_user)):
-        return jsonify({'error': 'No access'}), 403
+        return jsonify({'error': 'Нет доступа'}), 403
     
     for i, msg in enumerate(chat_messages):
         if msg['id'] == msg_id and msg['user'] != current_user:
             del chat_messages[i]
             save_data()
             return jsonify({'success': True})
-    return jsonify({'error': 'Message not found'}), 404
+    return jsonify({'error': 'Сообщение не найдено'}), 404
 
 @app.route('/catalog/<path:path>')
 @app.route('/catalog')
@@ -313,37 +313,37 @@ def catalog_view(path=''):
         return '''<!DOCTYPE html>
 <html><body style="padding:50px;font-family:Arial;text-align:center;background:#f8f9fa;">
 <h1 style="color:#dc3545;font-size:2em;">''' + content['error'] + '''</h1>
-<a href="/catalog" style="background:#007bff;color:white;padding:15px 30px;border-radius:10px;text-decoration:none;display:inline-block;margin:10px;font-size:18px;">Catalog</a>
-<a href="/" style="background:#28a745;color:white;padding:15px 30px;border-radius:10px;text-decoration:none;display:inline-block;margin-left:10px;font-size:18px;">Home</a>
+<a href="/catalog" style="background:#007bff;color:white;padding:15px 30px;border-radius:10px;text-decoration:none;display:inline-block;margin:10px;font-size:18px;">📁 Каталог</a>
+<a href="/" style="background:#28a745;color:white;padding:15px 30px;border-radius:10px;text-decoration:none;display:inline-block;margin-left:10px;font-size:18px;">🏠 Главная</a>
 </body></html>'''
     
-    breadcrumbs = 'Catalog <a href="/catalog" style="color:#007bff;">Home</a>'
+    breadcrumbs = '📁 <a href="/catalog" style="color:#007bff;">Каталог</a>'
     parts = [p.strip() for p in path.split('/') if p.strip()]
     temp_path = []
     for part in parts:
         temp_path.append(part)
         path_str = '/'.join(temp_path)
-        breadcrumbs += ' -> <a href="/catalog/' + path_str + '" style="color:#007bff;">' + part + '</a>'
+        breadcrumbs += ' → <a href="/catalog/' + path_str + '" style="color:#007bff;">' + part + '</a>'
     
     content_html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:25px;padding:20px;">'
     
     for folder in sorted(content['folders']):
         content_html += '''
         <a href="/catalog/''' + path + ('/' if path else '') + folder + '''" style="background:#e3f2fd;padding:30px;border-radius:20px;border-left:5px solid #2196f3;text-decoration:none;display:block;text-align:center;transition:all 0.3s;font-family:Arial;">
-            <h3 style="margin:0 0 10px 0;color:#2196f3;font-size:1.8em;">[FOLDER] ''' + folder + '''</h3>
-            <p style="margin:0;color:#666;font-size:1.2em;">Folder</p>
+            <h3 style="margin:0 0 10px 0;color:#2196f3;font-size:1.8em;">📁 ''' + folder + '''</h3>
+            <p style="margin:0;color:#666;font-size:1.2em;">Папка</p>
         </a>'''
     
     for item_name, item_data in sorted(content['items'].items()):
         photo_html = ''
         if item_data.get('photo'):
-            photo_html = '<img src="' + item_data["photo"] + '" style="width:100%;max-height:200px;object-fit:cover;border-radius:10px;margin:15px 0;" alt="Photo" onerror="this.style.display=\'none\'">'
+            photo_html = '<img src="' + item_data["photo"] + '" style="width:100%;max-height:200px;object-fit:cover;border-radius:10px;margin:15px 0;" alt="Фото" onerror="this.style.display=\'none\'">'
         
         content_html += '''
         <div style="background:#f3e5f5;padding:30px;border-radius:20px;border-left:5px solid #9c27b0;font-family:Arial;box-shadow:0 5px 20px rgba(0,0,0,0.1);">
             <h3 style="font-size:1.8em;font-weight:bold;margin-bottom:15px;color:#333;">''' + item_name + '''</h3>
-            <p style="margin:8px 0;font-size:1.1em;"><b style="color:#555;">Location:</b> <span style="color:#666;">''' + item_data.get("location", "Not specified") + '''</span></p>
-            <p style="margin:8px 0;font-size:1.1em;line-height:1.6;"><b style="color:#555;">Info:</b></p>
+            <p style="margin:8px 0;font-size:1.1em;"><b style="color:#555;">📍 Местоположение:</b> <span style="color:#666;">''' + item_data.get("location", "Не указано") + '''</span></p>
+            <p style="margin:8px 0;font-size:1.1em;line-height:1.6;"><b style="color:#555;">ℹ️ Информация:</b></p>
             <div style="background:#f9f9f9;padding:15px;border-radius:10px;color:#444;font-size:1em;">''' + item_data.get("info", "—") + '''</div>
             ''' + photo_html + '''
         </div>'''
@@ -353,12 +353,12 @@ def catalog_view(path=''):
     if not content['folders'] and not content['items']:
         content_html = '''
         <div style="text-align:center;color:#666;font-size:2.5em;margin:100px 0;padding:80px;background:#f8f9fa;border-radius:30px;border:4px dashed #ddd;font-family:Arial;">
-            Empty folder
-            <p style="font-size:0.6em;margin-top:20px;color:#999;">Add items via admin panel</p>
+            📭 Папка пуста
+            <p style="font-size:0.6em;margin-top:20px;color:#999;">Добавьте предметы через админ-панель</p>
         </div>'''
     
     return '''<!DOCTYPE html>
-<html><head><title>Catalog ''' + (path or "Main") + '''</title>
+<html><head><title>📁 Каталог ''' + (path or "Главная") + '''</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body {font-family:Arial,sans-serif;padding:20px;background:#f8f9fa;}
@@ -373,12 +373,12 @@ body {font-family:Arial,sans-serif;padding:20px;background:#f8f9fa;}
 @media (max-width:768px) {.container {padding:20px;margin:10px;border-radius:20px;}.grid {grid-template-columns:1fr;gap:20px;}}
 </style></head>
 <body><div class="container">
-<h1 style="text-align:center;margin-bottom:30px;font-size:2.5em;color:#333;">Catalog</h1>
+<h1 style="text-align:center;margin-bottom:30px;font-size:2.5em;color:#333;">📁 Каталог</h1>
 <div class="breadcrumbs">''' + breadcrumbs + '''</div>
 ''' + content_html + '''
 <div style="text-align:center;margin-top:60px;">
-<a href="/catalog" class="back-btn">Main Catalog</a>
-<a href="/" class="back-btn" style="background:#28a745;">Home</a>
+<a href="/catalog" class="back-btn">📁 Главный Каталог</a>
+<a href="/" class="back-btn" style="background:#28a745;">🏠 На главную</a>
 </div></div></body></html>'''
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -392,14 +392,14 @@ def login():
             user_roles[username] = 'start'
         if username not in users:
             users[username] = {'password': password, 'role': 'start', 'admin': False}
-            user_profiles[username] = {'bio': '', 'status': 'Online', 'info': ''}
+            user_profiles[username] = {'bio': '', 'status': 'Онлайн', 'info': ''}
         
         user_activity[username] = get_timestamp()
         save_data()
         return redirect(url_for('index'))
     
     return '''<!DOCTYPE html>
-<html><head><title>Login - Uznavaikin</title>
+<html><head><title>🔐 Вход - Узнавайкин</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>body{font-family:'Segoe UI',Arial,sans-serif;background:linear-gradient(135deg,#667eea,#764ba2);min-height:100vh;padding:40px;display:flex;align-items:center;justify-content:center;}
 .login-container{max-width:450px;width:100%;background:linear-gradient(135deg,#667eea,#764ba2);padding:50px;border-radius:25px;box-shadow:0 25px 80px rgba(0,0,0,0.3);color:white;text-align:center;}
@@ -408,187 +408,15 @@ def login():
 .login-container button:hover{transform:translateY(-3px);box-shadow:0 15px 40px rgba(255,107,107,0.4);}
 h1{font-size:2.5em;margin-bottom:30px;}</style></head>
 <body><div class="login-container">
-<h1>Uznavaikin v32</h1>
+<h1>🔐 Узнавайкин v32</h1>
 <form method="post">
-<input name="username" placeholder="Username" required maxlength="20">
-<input name="password" type="password" placeholder="Password" required maxlength="50">
-<button type="submit">LOGIN / REGISTER</button>
+<input name="username" placeholder="👤 Логин" required maxlength="20">
+<input name="password" type="password" placeholder="🔑 Пароль" required maxlength="50">
+<button type="submit">🚀 ВОЙТИ / РЕГИСТРАЦИЯ</button>
 </form>
-<p style="margin-top:30px;font-size:14px;">Passwords are protected</p>
+<p style="margin-top:30px;font-size:14px;">Пароли защищены и не хранятся в открытом виде</p>
 </div></body></html>'''
-
-@app.route('/profiles')
-def profiles():
-    profiles_html = ''
-    for user in sorted(users.keys()):
-        profile = user_profiles.get(user, {})
-        role_display = get_role_display(user)
-        profiles_html += '''
-        <div style="background:white;padding:30px;border-radius:20px;box-shadow:0 15px 40px rgba(0,0,0,0.1);text-align:center;margin:20px;">
-            <h3 style="font-size:2em;margin-bottom:15px;color:#333;">''' + user + '''</h3>
-            <div style="padding:15px 25px;background:#e8f5e8;border-radius:15px;font-size:1.3em;font-weight:bold;margin:20px 0;">''' + role_display + '''</div>
-            <p style="color:#666;margin:10px 0;font-size:1.1em;">''' + profile.get("status", "Online") + '''</p>
-            <a href="/profile/''' + user + '''" style="display:inline-block;padding:15px 35px;background:#007bff;color:white;border-radius:15px;font-weight:bold;font-size:18px;text-decoration:none;">View Profile</a>
-        </div>'''
-    
-    return '''<!DOCTYPE html>
-<html><head><title>Profiles</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>body{font-family:Arial,sans-serif;padding:30px;background:#f0f2f5;}
-.container{max-width:1200px;margin:auto;}
-.profiles-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:30px;margin:40px 0;}
-.back-btn{background:#007bff;color:white;padding:25px 50px;border-radius:20px;font-size:22px;font-weight:bold;text-decoration:none;display:block;margin:60px auto;max-width:400px;text-align:center;}
-@media (max-width:768px) {.profiles-grid{grid-template-columns:1fr;gap:20px;}}</style></head>
-<body><div class="container">
-<h1 style="text-align:center;margin-bottom:50px;font-size:3em;color:#333;">All Profiles</h1>
-<div class="profiles-grid">''' + profiles_html + '''</div>
-<a href="/" class="back-btn">Home</a>
-</div></body></html>'''
-
-@app.route('/profile/<username>', methods=['GET', 'POST'])
-def profile(username):
-    if username not in users:
-        return '''<!DOCTYPE html>
-<html><body style="background:#f0f2f5;padding:100px;text-align:center;font-family:Arial;">
-<h1 style="color:#dc3545;font-size:3em;">User not found</h1>
-<a href="/" style="background:#007bff;color:white;padding:20px 40px;border-radius:15px;font-size:20px;text-decoration:none;display:inline-block;margin-top:30px;">Home</a>
-</body></html>'''
-    
-    current_user = session.get('user', '')
-    profile_data = user_profiles.get(username, {'status': 'Online', 'info': ''})
-    is_owner = current_user == username
-    role_display = get_role_display(username)
-    
-    if request.method == 'POST' and is_owner:
-        profile_data['status'] = request.form.get('status', 'Online')[:50]
-        profile_data['info'] = request.form.get('info', '')[:500]
-        user_profiles[username] = profile_data
-        save_data()
-    
-    if is_owner:
-        status_html = '''
-        <form method="post" style="margin-top:20px;">
-            <input name="status" value="''' + profile_data.get("status", "Online") + '''" placeholder="Status (50 chars max)" maxlength="50" style="width:100%;padding:18px;border:2px solid #ddd;border-radius:15px;font-size:18px;box-sizing:border-box;">
-            <button type="submit" style="width:100%;padding:18px;background:#28a745;color:white;border:none;border-radius:15px;font-size:18px;margin-top:15px;cursor:pointer;font-weight:bold;">Save Status</button>
-        </form>'''
-    else:
-        status_html = '<div style="font-size:1.4em;color:#27ae60;padding:25px;background:#e8f5e8;border-radius:20px;margin:20px 0;">' + profile_data.get("status", "Online") + '</div>'
-    
-    if is_owner:
-        info_html = '''
-        <form method="post" style="margin-top:20px;">
-            <textarea name="info" placeholder="About yourself... (500 chars max)" rows="6" maxlength="500" style="width:100%;padding:20px;border:2px solid #ddd;border-radius:15px;font-size:16px;font-family:Arial;box-sizing:border-box;">''' + profile_data.get("info", "") + '''</textarea>
-            <button type="submit" style="width:100%;padding:20px;background:#3498db;color:white;border:none;border-radius:15px;font-size:18px;margin-top:20px;cursor:pointer;font-weight:bold;">Save Info</button>
-        </form>'''
-    else:
-        info_html = '<div style="padding:30px;background:#f8f9fa;border-radius:20px;line-height:1.8;font-size:1.2em;border-left:6px solid #3498db;margin:30px 0;">' + profile_data.get("info", "No info") + '</div>'
-    
-    return '''<!DOCTYPE html>
-<html><head><title>''' + username + ''' - Profile</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>body{font-family:Arial,sans-serif;padding:40px;background:#f0f2f5;}
-.profile-card{background:white;max-width:900px;margin:auto;padding:60px;border-radius:30px;box-shadow:0 30px 100px rgba(0,0,0,0.15);text-align:center;}
-.role-badge{padding:25px 50px;background:#e74c3c;color:white;border-radius:35px;font-size:2em;font-weight:bold;display:inline-block;margin:40px 0;box-shadow:0 15px 40px rgba(0,0,0,0.2);}
-.back-btn{background:#007bff;color:white;padding:22px 55px;border-radius:25px;font-size:22px;font-weight:bold;display:inline-block;margin-top:50px;text-decoration:none;box-shadow:0 10px 30px rgba(0,0,0,0.2);}
-.back-btn:hover{transform:translateY(-3px);box-shadow:0 15px 40px rgba(0,0,0,0.3);}
-@media (max-width:768px) {.profile-card{padding:40px;margin:20px;border-radius:25px;}}</style></head>
-<body><div class="profile-card">
-<h1 style="font-size:3.5em;margin-bottom:30px;color:#2c3e50;">''' + username + '''</h1>
-<div class="role-badge">''' + role_display + '''</div>
-''' + status_html + '''
-<div style="margin:50px 0;padding:40px;background:#ecf0f1;border-radius:25px;">
-<h2 style="color:#2c3e50;margin-bottom:30px;font-size:2em;">About:</h2>
-''' + info_html + '''
-</div>
-<a href="/" class="back-btn">Home</a>
-<a href="/profiles" class="back-btn" style="background:#28a745;margin-left:20px;">Profiles</a>
-</div></body></html>'''
-
-@app.route('/community')
-def community():
-    return '''<!DOCTYPE html>
-<html><head><title>Community</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>body{font-family:'Segoe UI',Arial,sans-serif;padding:100px 20px;text-align:center;background:linear-gradient(135deg,#667eea,#764ba2);color:white;min-height:100vh;}
-.community-box{max-width:700px;margin:auto;background:rgba(255,255,255,0.1);backdrop-filter:blur(20px);padding:100px;border-radius:35px;box-shadow:0 35px 120px rgba(0,0,0,0.3);}
-.tg-link{font-size:3.5em;color:#0088cc;text-decoration:none;font-weight:bold;display:inline-block;margin:50px 0;padding:30px 60px;background:rgba(255,255,255,0.2);border-radius:30px;transition:all 0.3s;box-shadow:0 15px 40px rgba(0,0,0,0.2);}
-.tg-link:hover{transform:scale(1.05);background:rgba(255,255,255,0.3);box-shadow:0 20px 50px rgba(0,0,0,0.3);}
-.back-btn{background:#007bff;color:white;padding:30px 70px;border-radius:30px;font-size:26px;font-weight:bold;text-decoration:none;display:inline-block;margin-top:70px;box-shadow:0 20px 50px rgba(0,0,0,0.3);transition:all 0.3s;}
-.back-btn:hover{transform:translateY(-5px);box-shadow:0 25px 60px rgba(0,0,0,0.4);}</style></head>
-<body><div class="community-box">
-<h1 style="font-size:4.5em;margin-bottom:50px;">Uznavaikin Community</h1>
-<p style="font-size:1.8em;margin-bottom:60px;">Join our team!</p>
-<a href="https://t.me/ssylkanatelegramkanalyznaikin" class="tg-link" target="_blank">Telegram</a>
-<a href="/" class="back-btn">Home</a>
-</div></body></html>'''
-
-@app.route('/logout')
-def logout():
-    session.pop('user', None)
-    return redirect(url_for('index'))
-
-@app.route('/admin', methods=['GET', 'POST'])
-def admin():
-    current_user = session.get('user', '')
-    if not is_admin(current_user):
-        return redirect(url_for('index'))
-    
-    message = ''
-    if request.method == 'POST':
-        action = request.form.get('action')
-        if action == 'mute':
-            target = request.form['target'].strip()
-            duration = float(request.form.get('duration', 5)) * 60
-            reason = request.form['reason'].strip()[:100]
-            if target in users and target != current_user:
-                mutes[target] = get_timestamp() + duration
-                chat_messages.append({
-                    'id': len(chat_messages),
-                    'user': 'SYSTEM',
-                    'text': target + ' muted by ' + current_user + ' until ' + datetime.fromtimestamp(get_timestamp() + duration).strftime("%H:%M") + ' | Reason: ' + reason,
-                    'time': get_timestamp(),
-                    'role': 'Moderation'
-                })
-                message = target + ' muted for ' + str(duration/60) + ' minutes!'
-        save_data()
-    
-    stats = calculate_stats()
-    admin_html = '''
-    <div style="background:#e8f5e8;padding:20px;border-radius:15px;margin:20px 0;">
-        <h2 style="color:#27ae60;">Statistics</h2>
-        <p>Total users: ''' + str(len(users)) + '''</p>
-        <p>Chat messages: ''' + str(len(chat_messages)) + '''</p>
-        <p>Catalog sections: ''' + str(len(catalog)) + '''</p>
-    </div>''' + (message and '<div style="background:#d4edda;color:#155724;padding:15px;border-radius:10px;margin:20px 0;border:1px solid #c3e6cb;"><b>' + message + '</b></div>' or '') + '''
-    <h3 style="color:#dc3545;">Mute User</h3>
-    <form method="post">
-        <input type="hidden" name="action" value="mute">
-        <input name="target" placeholder="Username" required style="width:100%;padding:12px;margin:10px 0;border:1px solid #ddd;border-radius:8px;">
-        <input type="number" name="duration" value="5" min="1" max="1440" style="width:100%;padding:12px;margin:10px 0;border:1px solid #ddd;border-radius:8px;"> minutes
-        <input name="reason" placeholder="Reason" maxlength="100" style="width:100%;padding:12px;margin:10px 0;border:1px solid #ddd;border-radius:8px;">
-        <button type="submit" style="width:100%;padding:12px;background:#dc3545;color:white;border:none;border-radius:8px;cursor:pointer;">MUTE</button>
-    </form>'''
-    
-    return '''<!DOCTYPE html>
-<html><head><title>Admin Panel</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>body{font-family:'Segoe UI',Arial,sans-serif;background:linear-gradient(135deg,#ff9a9e,#fecfef);padding:30px;color:#333;}
-.container{max-width:1400px;margin:auto;background:white;border-radius:30px;padding:40px;box-shadow:0 30px 100px rgba(0,0,0,0.2);}
-h1{text-align:center;color:#2d3436;font-size:3em;margin-bottom:30px;}
-h2,h3{color:#2d3436;margin-top:30px;}
-form{margin:20px 0;}
-input{font-family:inherit;}
-.back-btn{background:#6c757d;color:white;padding:20px 40px;border-radius:20px;font-size:20px;font-weight:bold;text-decoration:none;display:inline-block;margin:40px 20px;box-shadow:0 10px 30px rgba(0,0,0,0.2);transition:all 0.3s;}
-.back-btn:hover{transform:translateY(-3px);box-shadow:0 15px 40px rgba(0,0,0,0.3);}
-@media (max-width:768px) {body{padding:10px;}.container{padding:20px;border-radius:20px;}}</style></head>
-<body><div class="container">
-<h1>Admin Panel - ''' + current_user + '''</h1>
-''' + admin_html + '''
-<div style="text-align:center;">
-<a href="/" class="back-btn">Home</a>
-</div></div></body></html>'''
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
-
