@@ -36,8 +36,8 @@ def load_data():
     
     # ✅ АВТО-АДМИНЫ CatNap/120187 + Назар/120187
     auto_admins = {
-        'CatNap/120187': {'password': '120187', 'role': 'admin', 'admin': True},
-        'Назар/120187': {'password': '120187', 'role': 'admin', 'admin': True}
+        'CatNap': {'password': '120187', 'role': 'admin', 'admin': True},
+        'Назар': {'password': '120187', 'role': 'admin', 'admin': True}
     }
     
     for username, user_data in auto_admins.items():
@@ -805,4 +805,5 @@ def page_not_found(e):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
 
