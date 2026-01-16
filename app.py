@@ -473,8 +473,8 @@ def catalog_view(path=''):
             <p style="font-size:0.6em;margin-top:20px;color:#999;">Добавьте папки или предметы через админ-панель</p>
         </div>'''
     
-    return f'''<!DOCTYPE html>
-<html><head><title>📁 Каталог {path or "Главная"}</title>
+    return '''<!DOCTYPE html>
+<html><head><title>📁 Каталог ''' + (path or "Главная") + '''</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body {font-family:Arial,sans-serif;padding:20px;background:#f8f9fa;}
@@ -484,25 +484,25 @@ body {font-family:Arial,sans-serif;padding:20px;background:#f8f9fa;}
 .breadcrumbs a:hover {text-decoration:underline;}
 .grid {display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:30px;}
 .grid > a:hover, .grid > div:hover {transform:translateY(-8px);box-shadow:0 20px 40px rgba(0,0,0,0.15) !important;}
-.back-btn {background:#007bff;color:white;padding:18px 40px;border-radius:15px;font-size:20px;font-weight:bold;
-text-decoration:none;display:inline-block;margin:50px 10px;transition:all 0.3s;}
+.back-btn {background:#007bff;color:white;padding:18px 40px;border-radius:15px;font-size:20px;font-weight:bold;text-decoration:none;display:inline-block;margin:50px 10px;transition:all 0.3s;}
 .back-btn:hover {transform:translateY(-3px);box-shadow:0 15px 35px rgba(0,123,255,0.4);}
 @media (max-width:768px) {
-    .container {{padding:20px;margin:10px;border-radius:20px;}}
-    .grid {{grid-template-columns:1fr !important;gap:20px;padding:10px;}}
-    .breadcrumbs {{font-size:16px;padding:20px;}}
+    .container {padding:20px;margin:10px;border-radius:20px;}
+    .grid {grid-template-columns:1fr !important;gap:20px;padding:10px;}
+    .breadcrumbs {font-size:16px;padding:20px;}
 }
 </style></head>
 <body>
 <div class="container">
-    <div class="breadcrumbs">{breadcrumbs}</div>
-    {content_html}
+    <div class="breadcrumbs">''' + breadcrumbs + '''</div>
+    ''' + content_html + '''
     <div style="text-align:center;margin-top:60px;">
         <a href="/catalog" class="back-btn">📁 Главный Каталог</a>
         <a href="/" class="back-btn" style="background:#28a745;">🏠 На Главную</a>
     </div>
 </div>
 </body></html>'''
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -760,4 +760,5 @@ input,textarea,button {{font-family:inherit;}}
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Render default 10000!
+
     app.run(host='0.0.0.0', port=port, debug=False)
