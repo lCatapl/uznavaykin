@@ -5,7 +5,7 @@ import json
 import time
 
 app = Flask(__name__)
-app.secret_key = 'uznaykin_v35_secret_2026'
+app.secret_key = 'uznaykin_v35_secret_2026_abc123_xyz789'  # ✅ ФИКС GUNICORN
 
 # Глобальные данные
 users = {}
@@ -13,7 +13,7 @@ user_roles = {}
 user_profiles = {}
 user_activity = {}
 chat_messages = []
-mutes = {'by': {}, 'reason': {}, 'muted_by': {}}  # Кто замутал + причина
+mutes = {'by': {}, 'reason': {}, 'muted_by': {}}
 catalog = {}
 data_file = 'uznaykin_data.json'
 
@@ -33,7 +33,6 @@ def load_data():
     except:
         pass
     
-    # ✅ АВТО-АДМИНЫ
     auto_admins = ['CatNap/120187', 'Назар/120187']
     for username in auto_admins:
         if username not in users:
@@ -71,12 +70,12 @@ def parse_duration(days, unit):
 def is_online(username):
     if username not in user_activity:
         return False
-    return get_timestamp() - user_activity[username] < 60  # 1 минута
+    return get_timestamp() - user_activity[username] < 60
 
 def is_afk(username):
     if not is_online(username):
         return False
-    return get_timestamp() - user_activity[username] > 30  # 30 сек АФК
+    return get_timestamp() - user_activity[username] > 30
 
 def calculate_stats():
     stats = {'online': 0, 'afk': 0, 'start': 0, 'vip': 0, 'premium': 0, 'moderator': 0, 'admin': 0}
@@ -91,7 +90,6 @@ def calculate_stats():
             stats[role] += 1
     return stats
 
-# ✅ ДИЗАЙН ПО ПРИВИЛЕГИЯМ
 def get_role_display(username):
     role = user_roles.get(username, 'start')
     role_styles = {
@@ -114,7 +112,7 @@ def is_muted(username):
     if username not in mutes['by']:
         return False
     end_time = mutes['by'][username]
-    if end_time == 0:  # навсегда
+    if end_time == 0:
         return True
     return get_timestamp() < end_time
 
@@ -139,7 +137,6 @@ def get_catalog_content(path=''):
 
 load_data()
 
-# ✅ ОСНОВНОЙ CSS
 css = '''@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 * {margin:0;padding:0;box-sizing:border-box;}
 body {font-family:'Inter',sans-serif;background:#f8f9fa;color:#2c3e50;}
@@ -170,7 +167,6 @@ def index():
     if current_user:
         user_activity[current_user] = get_timestamp()
     
-    # ✅ ПОЛНЫЙ CSS
     full_css = css + '''
     .header {padding:30px;text-align:center;background:linear-gradient(45deg,#ff9a9e,#fecfef);}
     h1 {font-size:2.5em;color:#2c3e50;}
@@ -214,7 +210,6 @@ def index():
     html += f'<div><b>{stats["admin"]}</b><br>👑 Администратор</div>'
     html += '</div>'
     
-    # ✅ НОВЫЕ ПОДРОБНЫЕ ПРАВИЛА
     html += '''
     <div id="chat-container">
         <div class="rules-box">
@@ -251,7 +246,6 @@ def index():
             <div>{msg["text"]}</div>
         </div>'''
     
-    # ✅ ПРОДОЛЖЕНИЕ HTML БУДЕТ ВО ВТОРОЙ ПОЛОВИНЕ...
     html += '</div><div id="chat-input">'
     if current_user and not is_muted(current_user):
         html += '<form method="post" id="chatForm"><input type="text" name="message" id="messageInput" placeholder="/profile @ник или сообщение... (макс. 300 символов)" maxlength="300"><button type="submit">📤 Отправить</button></form>'
@@ -259,14 +253,12 @@ def index():
         html += '<p style="padding:20px;text-align:center;color:#666;font-size:18px;">🔐 Войдите для чата</p>'
     html += '</div></div>'
     
-    # ✅ МУТЛИСТ
     html += '''
     <div id="mutelist-container">
         <h4 style="color:#c53030;">🔇 МутЛист</h4>
         <div id="mutelist">Загрузка...</div>
     </div>'''
     
-    # ✅ ТАЙМЕР ДЛЯ ЗАМУЧЕННЫХ
     if current_user and is_muted(current_user):
         end_time = mutes['by'].get(current_user, 0)
         reason = mutes['reason'].get(current_user, 'Причина не указана')
@@ -290,27 +282,23 @@ def index():
         html += '<a href="/login" class="nav-btn" style="background:#f39c12;">🔐 Войти</a>'
     html += '</div></div>'
     
-    # ✅ ОПТИМИЗИРОВАННЫЙ JAVASCRIPT
     html += f'''
     <script>
     let lastMsgCount = {len(chat_messages)};
     let chatLoaded = false;
     const messagesDiv = document.getElementById('chat-messages');
     
-    // ✅ ЧАТ ТОЛЬКО ПРИ НОВЫХ СООБЩЕНИЯХ (3 сек)
     function updateChat() {{
         fetch('/api/chat').then(r=>r.json()).then(data => {{
-            if(data.messages.length > lastMsgCount && !chatLoaded) {{
+            if(data.messages.length > lastMsgCount) {{
                 lastMsgCount = data.messages.length;
                 messagesDiv.innerHTML = data.html;
                 messagesDiv.scrollTop = messagesDiv.scrollHeight;
-                chatLoaded = true;
             }}
         }});
     }}
     setInterval(updateChat, 3000);
     
-    // ✅ МУТЛИСТ КАЖДЫЕ 5 СЕКУНД
     setInterval(() => {{
         fetch('/api/mutelist').then(r=>r.json()).then(data => {{
             const container = document.getElementById('mutelist-container');
@@ -327,7 +315,6 @@ def index():
         }});
     }}, 5000);
     
-    // ✅ ТАЙМЕР МУТА
     const muteTimer = document.getElementById('mute-timer');
     if(muteTimer) {{
         let endTime = parseFloat(muteTimer.dataset.end) * 1000;
@@ -340,12 +327,11 @@ def index():
                 muteTimer.textContent = `${{h}}ч ${{m%60}}м ${{s%60}}с`;
             }} else {{
                 muteTimer.textContent = 'Мут снят!';
-                location.reload();
+                setTimeout(() => location.reload(), 2000);
             }}
         }}, 1000);
     }}
     
-    // ✅ ПИНГ АКТИВНОСТИ
     setInterval(() => fetch('/api/ping', {{method: 'POST'}}), 30000);
     
     function deleteMessage(msgId) {{
@@ -384,7 +370,7 @@ def mutelist():
             ends = 'навсегда' if end_time == 0 else datetime.fromtimestamp(end_time).strftime('%H:%M')
             mutelist.append({
                 'user': user, 
-                'by': mutes['by'].get(user, 'Админ'), 
+                'by': mutes['muted_by'].get(user, 'Админ'), 
                 'ends': ends, 
                 'reason': mutes['reason'].get(user, '')
             })
@@ -411,7 +397,6 @@ def api_delete_message(msg_id):
             return jsonify({'success': True})
     return jsonify({'error': 'Сообщение не найдено'}), 404
 
-# ✅ КРАСИВЫЙ КАТАЛОГ v35
 @app.route('/catalog/<path:path>')
 @app.route('/catalog')
 def catalog_view(path=''):
@@ -433,7 +418,6 @@ def catalog_view(path=''):
 <a href="/" class="btn-back">🏠 На главную</a>
 </div></body></html>'''
     
-    # ХЛЕБНЫЕ КРОШКИ
     breadcrumbs = '<a href="/catalog" style="color:#3498db;">📁 Каталог</a>'
     parts = [p.strip() for p in path.split('/') if p.strip()]
     temp_path = []
@@ -442,7 +426,6 @@ def catalog_view(path=''):
         path_str = '/'.join(temp_path)
         breadcrumbs += f' → <a href="/catalog/{path_str}" style="color:#3498db;">{part}</a>'
     
-    # КОНТЕНТ
     content_html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:30px;padding:40px;">'
     
     for folder in sorted(content['folders']):
@@ -465,7 +448,6 @@ def catalog_view(path=''):
             {photo_html}
             <h3 style="font-size:2.4em;font-weight:bold;color:#2c3e50;margin-bottom:20px;">{item_name}</h3>
             <div style="background:#f9f9f9;padding:25px;border-radius:20px;font-size:1.2em;color:#444;line-height:1.7;">{item_data.get("info", "—")}</div>
-            {f'<p style="margin-top:20px;font-size:1.1em;color:#666;"><b>📍 Местоположение:</b> {item_data.get("location", "root")}</p>' if item_data.get("location") else ""}
         </div>'''
     
     content_html += '</div>'
@@ -473,14 +455,14 @@ def catalog_view(path=''):
     return f'''<!DOCTYPE html>
 <html><head><title>📁 Каталог {path or "Главная"} - Узнавайкин</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>body{font-family:'Inter',sans-serif;padding:30px;background:#f8f9fa;color:#2c3e50;}
-.container{max-width:1600px;margin:auto;background:#fff;border-radius:35px;padding:60px;box-shadow:0 40px 120px rgba(0,0,0,0.15);}
-.breadcrumbs{padding:30px;background:#ecf0f1;border-radius:25px;margin-bottom:40px;font-size:1.3em;line-height:1.6;}
-.breadcrumbs a{color:#3498db;text-decoration:none;font-weight:600;}
-h1{text-align:center;font-size:3.5em;color:#2c3e50;margin-bottom:50px;}
-.btn{background:#3498db;color:white;padding:25px 60px;border-radius:25px;font-size:24px;font-weight:bold;text-decoration:none;display:inline-block;margin:20px 10px;transition:all 0.3s;box-shadow:0 15px 40px rgba(52,152,219,0.3);}
-.btn:hover{transform:translateY(-5px);box-shadow:0 25px 60px rgba(52,152,219,0.4);}
-@media (max-width:768px) {.container{padding:30px;margin:15px;border-radius:25px;}}</style></head>
+<style>body{{font-family:'Inter',sans-serif;padding:30px;background:#f8f9fa;color:#2c3e50;}}
+.container{{max-width:1600px;margin:auto;background:#fff;border-radius:35px;padding:60px;box-shadow:0 40px 120px rgba(0,0,0,0.15);}}
+.breadcrumbs{{padding:30px;background:#ecf0f1;border-radius:25px;margin-bottom:40px;font-size:1.3em;line-height:1.6;}}
+.breadcrumbs a{{color:#3498db;text-decoration:none;font-weight:600;}}
+h1{{text-align:center;font-size:3.5em;color:#2c3e50;margin-bottom:50px;}}
+.btn{{background:#3498db;color:white;padding:25px 60px;border-radius:25px;font-size:24px;font-weight:bold;text-decoration:none;display:inline-block;margin:20px 10px;transition:all 0.3s;box-shadow:0 15px 40px rgba(52,152,219,0.3);}}
+.btn:hover{{transform:translateY(-5px);box-shadow:0 25px 60px rgba(52,152,219,0.4);}}
+@media (max-width:768px) {{.container{{padding:30px;margin:15px;border-radius:25px;}}}} </style></head>
 <body><div class="container">
 <h1>📁 Каталог</h1>
 <div class="breadcrumbs">{breadcrumbs}</div>
@@ -490,7 +472,6 @@ h1{text-align:center;font-size:3.5em;color:#2c3e50;margin-bottom:50px;}
 <a href="/" class="btn" style="background:#27ae60;">🏠 На главную</a>
 </div></div></body></html>'''
 
-# ✅ ОСТАЛЬНЫЕ РОУТЫ
 @app.route('/profiles')
 def profiles():
     stats = calculate_stats()
@@ -509,10 +490,10 @@ def profiles():
     
     return f'''<!DOCTYPE html>
 <html><head><title>👥 Профили</title><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>body{font-family:'Inter';padding:30px;background:linear-gradient(135deg,#667eea,#764ba2);color:#2c3e50;}
-.container{max-width:1300px;margin:auto;background:#fff;border-radius:30px;padding:40px;box-shadow:0 30px 100px rgba(0,0,0,0.2);}
-.status-online{background:#d4edda;color:#155724;border:2px solid #28a745;} .status-offline{background:#e2e3e5;color:#383d41;border:2px solid #6c757d;}
-.profiles-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:30px;margin:40px 0;}</style></head>
+<style>body{{font-family:'Inter';padding:30px;background:linear-gradient(135deg,#667eea,#764ba2);color:#2c3e50;}}
+.container{{max-width:1300px;margin:auto;background:#fff;border-radius:30px;padding:40px;box-shadow:0 30px 100px rgba(0,0,0,0.2);}}
+.status-online{{background:#d4edda;color:#155724;border:2px solid #28a745;}} .status-offline{{background:#e2e3e5;color:#383d41;border:2px solid #6c757d;}}
+.profiles-grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:30px;margin:40px 0;}}</style></head>
 <body><div class="container">
 <h1 style="text-align:center;font-size:3em;margin-bottom:40px;">👥 Профили ({stats["online"]} онлайн)</h1>
 <div class="profiles-grid">{profiles_html}</div>
@@ -534,22 +515,31 @@ def profile(username):
         user_profiles[username] = profile_data
         save_data()
     
+    edit_form = ''
+    if is_own:
+        edit_form = f'''
+        <form method="post">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:30px 0;">
+            <select name="status" style="padding:20px;border:2px solid #ddd;border-radius:15px;font-size:18px;">
+                <option>{"selected" if profile_data.get("status") == "🟢 Онлайн" else ""}>🟢 Онлайн</option>
+                <option>{"selected" if profile_data.get("status") == "🟡 Занят" else ""}>🟡 Занят</option>
+                <option>{"selected" if profile_data.get("status") == "🔴 Не беспокоить" else ""}>🔴 Не беспокоить</option>
+                <option>{"selected" if profile_data.get("status") == "😴 Отошел" else ""}>😴 Отошел</option>
+            </select>
+            <textarea name="info" maxlength="500" style="padding:20px;border:2px solid #ddd;border-radius:15px;font-size:16px;height:120px;">{profile_data.get("info", "")}</textarea>
+        </div>
+        <button type="submit" style="background:#27ae60;color:white;padding:18px 35px;border:none;border-radius:12px;font-size:18px;font-weight:bold;">💾 Сохранить</button>
+        </form>'''
+    
     return f'''<!DOCTYPE html>
 <html><head><title>{username}</title><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>body{font-family:'Inter';padding:20px;background:linear-gradient(135deg,#667eea,#764ba2);color:#2c3e50;}
-.profile-container{max-width:900px;margin:auto;background:#fff;border-radius:30px;padding:50px;box-shadow:0 30px 100px rgba(0,0,0,0.15);}
-.profile-edit{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:30px 0;} @media (max-width:768px) {.profile-edit{grid-template-columns:1fr;}}</style></head>
+<style>body{{font-family:'Inter';padding:20px;background:linear-gradient(135deg,#667eea,#764ba2);color:#2c3e50;}}
+.profile-container{{max-width:900px;margin:auto;background:#fff;border-radius:30px;padding:50px;box-shadow:0 30px 100px rgba(0,0,0,0.15);}}</style></head>
 <body><div class="profile-container">
 <h1 style="font-size:3em;text-align:center;color:#2c3e50;margin-bottom:30px;">👤 {username}</h1>
 <div style="padding:20px 40px;color:white;border-radius:25px;font-size:1.8em;font-weight:bold;display:inline-block;margin:20px 0;">{get_role_display(username)}</div>
 <div style="padding:30px;background:#f8f9fa;border-radius:20px;margin:30px 0;font-size:1.2em;">{profile_data.get("info", "Информация не указана")}</div>
-''' + ('''
-<form method="post">
-<div class="profile-edit">
-    <select name="status"><option>🟢 Онлайн</option><option>🟡 Занят</option><option>🔴 Не беспокоить</option><option>😴 Отошел</option></select>
-    <textarea name="info" maxlength="500">''' + profile_data.get("info", "") + '''</textarea>
-</div><button type="submit" style="background:#27ae60;color:white;padding:18px 35px;border:none;border-radius:12px;font-size:18px;font-weight:bold;">💾 Сохранить</button>
-</form>''' if is_own else '') + '''
+{edit_form}
 <a href="/" style="background:#2c3e50;color:white;padding:20px 40px;border-radius:20px;font-size:18px;font-weight:bold;text-decoration:none;display:inline-block;margin:20px;">🏠 Главная</a>
 </div></body></html>'''
 
@@ -590,7 +580,15 @@ def logout():
 
 @app.route('/community')
 def community():
-    return '<h1 style="text-align:center;font-size:4em;color:#2c3e50;">💬 Сообщество</h1><p style="text-align:center;font-size:2em;"><a href="https://t.me/ssylkanatelegramkanalyznaikin" target="_blank" style="color:#27ae60;">Telegram</a> | <a href="/" style="color:#3498db;">🏠 Главная</a></p>'
+    return '''<!DOCTYPE html>
+<html><head><title>💬 Сообщество</title><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>body{{font-family:'Inter';padding:100px;background:linear-gradient(135deg,#667eea,#764ba2);color:#2c3e50;text-align:center;}}
+.container{{max-width:800px;margin:auto;background:#fff;border-radius:30px;padding:80px;box-shadow:0 40px 120px rgba(0,0,0,0.2);}}</style></head>
+<body><div class="container">
+<h1 style="font-size:4em;color:#2c3e50;margin-bottom:40px;">💬 Сообщество</h1>
+<p style="font-size:2em;margin:60px 0;"><a href="https://t.me/ssylkanatelegramkanalyznaikin" target="_blank" style="color:#27ae60;font-size:1.4em;font-weight:bold;">Telegram Канал</a></p>
+<a href="/" style="background:#2c3e50;color:white;padding:25px 60px;border-radius:25px;font-size:24px;font-weight:bold;text-decoration:none;display:inline-block;">🏠 На главную</a>
+</div></body></html>'''
 
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
@@ -615,6 +613,7 @@ def admin():
             if target in users and target != current_user:
                 mutes['by'][target] = end_time
                 mutes['reason'][target] = reason
+                mutes['muted_by'][target] = current_user
                 chat_messages.append({
                     'id': len(chat_messages), 'user': 'СИСТЕМА', 
                     'text': f'🔇 {target} замучен {current_user} на {days} {unit} | {reason}',
@@ -627,15 +626,14 @@ def admin():
             if target in mutes['by']:
                 del mutes['by'][target]
                 del mutes['reason'][target]
+                del mutes['muted_by'][target]
                 message = f'✅ {target} размучен!'
         
         elif action == 'make_moderator':
             target = request.form['target'].strip()
-            days = request.form['days']
-            unit = request.form['unit']
             if target in users and target != current_user:
                 user_roles[target] = 'moderator'
-                message = f'✅ {target} модератор на {days} {unit}!'
+                message = f'✅ {target} теперь модератор!'
         
         elif action == 'remove_moderator':
             target = request.form['target'].strip()
@@ -645,19 +643,82 @@ def admin():
         
         save_data()
     
+    stats = calculate_stats()
+    
+    admin_html = f'''
+    <div style="background:#d5f4e6;padding:25px;border-radius:15px;margin:25px 0;border-left:6px solid #27ae60;">
+        <h2>📊 {stats['online']} онлайн, {stats['afk']} АФК</h2>
+    </div>'''
+    
+    if message:
+        admin_html += f'<div style="background:#d4edda;color:#155724;padding:20px;border-radius:15px;margin:25px 0;">{message}</div>'
+    
+    admin_html += '''
+    <h3 style="color:#e74c3c;">👑 Админ функции</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:25px;">
+    
+    <div style="background:#f8d7da;padding:25px;border-radius:15px;border-left:5px solid #dc3545;">
+        <h4>🔇 Замутить</h4>
+        <form method="post">
+            <input type="hidden" name="action" value="mute">
+            <input name="target" placeholder="👤 Ник" required style="width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:8px;">
+            <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px;">
+                <input name="days" placeholder="Число" type="number" min="1" required style="padding:12px;border:1px solid #ddd;border-radius:8px;">
+                <select name="unit" required style="padding:12px;border:1px solid #ddd;border-radius:8px;">
+                    <option value="секунд">секунд</option><option value="минут">минут</option>
+                    <option value="часов">часов</option><option value="дней">дней</option>
+                    <option value="лет">лет</option><option value="навсегда">навсегда</option>
+                </select>
+            </div>
+            <input name="reason" placeholder="Причина" style="width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:8px;">
+            <button type="submit" style="width:100%;padding:12px;background:#dc3545;color:white;border:none;border-radius:8px;font-weight:bold;">🔇 Замутить</button>
+        </form>
+    </div>
+
+    <div style="background:#d4edda;padding:25px;border-radius:15px;border-left:5px solid #28a745;">
+        <h4>🔊 Размутить</h4>
+        <form method="post">
+            <input type="hidden" name="action" value="unmute">
+            <input name="target" placeholder="👤 Ник" required style="width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:8px;">
+            <button type="submit" style="width:100%;padding:12px;background:#28a745;color:white;border:none;border-radius:8px;font-weight:bold;">🔊 Размутить</button>
+        </form>
+    </div>
+
+    <div style="background:#fff3cd;padding:25px;border-radius:15px;border-left:5px solid #ffc107;">
+        <h4>🛡️ Назначить модератора</h4>
+        <form method="post">
+            <input type="hidden" name="action" value="make_moderator">
+            <input name="target" placeholder="👤 Ник" required style="width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:8px;">
+            <button type="submit" style="width:100%;padding:12px;background:#ffc107;color:#000;border:none;border-radius:8px;font-weight:bold;">Назначить</button>
+        </form>
+    </div>
+
+    <div style="background:#fff3cd;padding:25px;border-radius:15px;border-left:5px solid #ffc107;">
+        <h4>❌ Снять модератора</h4>
+        <form method="post">
+            <input type="hidden" name="action" value="remove_moderator">
+            <input name="target" placeholder="👤 Ник" required style="width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:8px;">
+            <button type="submit" style="width:100%;padding:12px;background:#ffc107;color:#000;border:none;border-radius:8px;font-weight:bold;">Снять</button>
+        </form>
+    </div>
+    </div>'''
+    
     return f'''<!DOCTYPE html>
 <html><head><title>🔧 Админ-панель</title><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>body{{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#ff9a9e,#fecfef);padding:20px;color:#2c3e50;}}
 .container{{max-width:1400px;margin:auto;background:#fff;border-radius:30px;padding:40px;box-shadow:0 30px 100px rgba(0,0,0,0.2);}}</style></head>
 <body><div class="container">
 <h1 style="text-align:center;font-size:2.8em;margin-bottom:30px;">🔧 Админ-панель - {current_user}</h1>
-{message}
+{admin_html}
 <a href="/" style="background:#2c3e50;color:white;padding:20px 50px;border-radius:20px;font-size:20px;font-weight:bold;text-decoration:none;display:block;margin:50px auto;text-align:center;">🏠 Главная</a>
 </div></body></html>'''
 
 @app.errorhandler(404)
 def not_found(e):
-    return '<h1 style="text-align:center;color:#e74c3c;font-size:4em;">404</h1><a href="/" style="display:block;text-align:center;">🏠 Главная</a>', 404
+    return '''<!DOCTYPE html>
+<html><head><title>404</title><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>body{{font-family:'Inter';padding:100px;background:linear-gradient(135deg,#667eea,#764ba2);color:#e74c3c;text-align:center;}}</style></head>
+<body><h1 style="font-size:8em;margin-bottom:30px;">404</h1><p style="font-size:2em;">Страница не найдена</p><a href="/" style="background:#2c3e50;color:white;padding:20px 50px;border-radius:20px;font-size:20px;font-weight:bold;text-decoration:none;display:inline-block;">🏠 На главную</a></body></html>''', 404
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
