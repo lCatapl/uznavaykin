@@ -507,7 +507,7 @@ document.getElementById('message-input')?.addEventListener('input', e => {{
 async function deleteMsg(id) {{
     if(confirm('🗑️ Удалить сообщение?')) {{
         try {{
-            const response = await fetch(`/api/delete/{{id}}`, {{method:'POST'}});
+            const response = await fetch(`/api/delete/${id}`, {{method:'POST'}});
             if(response.ok) {{
                 document.querySelector(`[data-id="${{id}}"]`).style.opacity = '0.3';
                 setTimeout(() => document.querySelector(`[data-id="${{id}}"]`).remove(), 300);
@@ -831,4 +831,5 @@ if __name__ == '__main__':
 
 print("🎉 УЖНАВАЙКИН v37.9 ЧАСТЬ 3/3 — 100% ГОТОВ!")
 print("cat part1.py part2.py part3.py > app.py && git push = 🚀 ДЕПЛОЙ!")
+
 
