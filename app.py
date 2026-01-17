@@ -178,7 +178,7 @@ def auto_moderate_v37(message, username):
     return None, None, 0
 
 # ✅ АДМИНЫ v37 (единый пароль 120187)
-def setup_auto_admins_v37():
+def setup_auto_admins():
     """Только CatNap + Назар с паролем 120187"""
     conn = get_db()
     
@@ -980,6 +980,7 @@ if __name__ == '__main__':
     print("👑 Админы: CatNap/Назар")
     print("✅ Все 9 пунктов выполнено!")
     app.run(host='0.0.0.0', port=port, debug=False)
+
 
 
 
