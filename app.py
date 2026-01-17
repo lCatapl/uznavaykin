@@ -215,7 +215,7 @@ def setup_auto_admins_v37():
     print("✅ База + правила + анонсы готовы!")
 
 # ✅ СТАТИСТИКА v37 (1сек=онлайн, 1мин=АФК)
-def get_detailed_stats_v37():
+def get_detailed_stats_():
     conn = get_db()
     now = time.time()
     
@@ -302,7 +302,7 @@ form button:hover {transform:translateY(-2px);box-shadow:0 8px 25px rgba(52,152,
 
 # ✅ ИНИЦИАЛИЗАЦИЯ v37
 init_db()
-setup_auto_admins_v37()
+setup_auto_admins()
 
 print("🚀 УЗНАВАЙКИН v37.0 ЧАСТЬ 1/3 — ОСНОВА + БД + АДМИНЫ + МОДЕРАЦИЯ!")
 print("✅ Готово к запуску! Скажи '2/3' для главной + чата!")
@@ -980,6 +980,7 @@ if __name__ == '__main__':
     print("👑 Админы: CatNap/Назар")
     print("✅ Все 9 пунктов выполнено!")
     app.run(host='0.0.0.0', port=port, debug=False)
+
 
 
 
