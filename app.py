@@ -428,7 +428,7 @@ def index():
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🚀 УЗНАВАЙКИН v37.9 — Игровой хаб</title>
-    <style>{css_v37}</style>
+    <style>{css}</style>
 </head><body>
 <div class="container">
     <!-- ✅ HEADER -->
@@ -702,7 +702,7 @@ def admin_panel():
     
     conn.close()
     
-    return f'''<!DOCTYPE html><html><head><title>⚙️ Админка v37.9</title><style>{css_v37}</style></head><body>
+    return f'''<!DOCTYPE html><html><head><title>⚙️ Админка v37.9</title><style>{css}</style></head><body>
     <div class="container">
         <h1 style="text-align:center;color:#e74c3c;">⚙️ Админ-панель v37.9</h1>
         <div style="color:#27ae60;padding:15px;background:#d4edda;border:1px solid #c3e6cb;border-radius:8px;margin:20px 0;">{message}</div>
@@ -831,3 +831,4 @@ if __name__ == '__main__':
 
 print("🎉 УЖНАВАЙКИН v37.9 ЧАСТЬ 3/3 — 100% ГОТОВ!")
 print("cat part1.py part2.py part3.py > app.py && git push = 🚀 ДЕПЛОЙ!")
+
