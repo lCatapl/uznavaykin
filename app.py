@@ -126,14 +126,14 @@ def save_user_activity(username):
     conn.close()
 
 def get_detailed_stats():
-    """✅ ПОЛНАЯ статистика с ролями"""
+    """✅ ПОЛНАЯ статистика с ролями — ФИКС закрытого соединения"""
     now = time.time()
     online_count = afk_count = total_users = 0
     role_stats = {'start': 0, 'vip': 0, 'premium': 0, 'moderator': 0, 'admin': 0}
     
+    # ✅ ПЕРВЫЙ запрос — роли + активность
     conn = get_db()
     all_users = conn.execute('SELECT username, role, last_activity FROM users WHERE is_active = 1').fetchall()
-    conn.close()
     
     for user in all_users:
         username = user['username']
@@ -148,10 +148,12 @@ def get_detailed_stats():
             afk_count += 1
         total_users += 1
     
-    top_wealth = sorted(
-        [(u['username'], u['coins']) for u in conn.execute('SELECT username, coins FROM users ORDER BY coins DESC LIMIT 5').fetchall()],
-        key=lambda x: x[1], reverse=True
-    )
+    # ✅ ВТОРОЙ запрос — ТОП монет (НОВОЕ соединение!)
+    conn.close()  # Закрываем первое
+    conn = get_db()  # ✅ НОВОЕ соединение
+    top_wealth_raw = conn.execute('SELECT username, coins FROM users ORDER BY coins DESC LIMIT 5').fetchall()
+    top_wealth = [(u['username'], u['coins']) for u in top_wealth_raw]
+    conn.close()
     
     return {
         'online': online_count,
@@ -786,3 +788,4 @@ if __name__ == '__main__':
     app.run(host='0.0.0.0', port=port, debug=False)
 
 print("🎉 УЖНАВАЙКИН v37.14 = 100% РАБОТАЕТ! ДЕПЛОЙ!")
+
