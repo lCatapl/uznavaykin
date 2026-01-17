@@ -162,7 +162,7 @@ def auto_moderate_v37(message, username):
     # ✅ 2. СПАМ (ссылки/реклама)
     for pattern in spam_patterns:
         if re.search(pattern, message, re.IGNORECASE):
-            return f'🚫 Флуд — мут 30 мин', 'mute', 600
+            return f'🚫 Флуд/Реклама — мут 30 мин', 'mute', 600
     
     # ✅ 3. ФЛУД (3 одинаковых подряд)
     conn = get_db()
@@ -173,7 +173,7 @@ def auto_moderate_v37(message, username):
     
     texts = [r['text'].lower() for r in recent]
     if len(texts) >= 3 and len(set(texts[:3])) <= 1:
-        return '🚫 Спам/реклама — мут 10 мин', 'mute', 1800
+        return '🚫 Спам — мут 10 мин', 'mute', 1800
     
     return None, None, 0
 
@@ -201,7 +201,7 @@ def setup_auto_admins_v37():
     
     # Правила чата
     rules_msg = '''📜 ПРАВИЛА v37:
-🚫 Мат = мут 15мин | 🚫 Флуд = мут 30мин | 🚫 Спам = мут 10мин
+🚫 Мат = мут 15мин | 🚫 Флуд/Реклама = мут 30мин | 🚫 Спам = мут 10мин
 ✅ +5💰 за сообщение | 🛡️ Модеры удаляют (кроме админов)
 👑 Админы: CatNap, Назар'''
     
@@ -311,127 +311,130 @@ print("✅ Готово к запуску! Скажи '2/3' для главно�
 def index():
     current_user = session.get('user', '')
     
+    # ✅ Обновление активности
     if current_user:
         save_user_activity(current_user)
     
+    # ✅ POST — отправка сообщения
     if request.method == 'POST' and current_user:
         message = request.form.get('message', '').strip()
         if message and len(message) <= 300 and not is_muted_or_banned(current_user):
             reason, mtype, duration = auto_moderate_v37(message, current_user)
             if reason:
-                conn = get_db()
-                conn.execute('''INSERT INTO moderation (username, type, by_user, reason, expires, created_at)
-                               VALUES (?, ?, 'АВТОМОД', ?, ?, ?)''',
-                            (current_user, mtype, reason, time.time() + duration, time.time()))
-                conn.execute('''INSERT INTO chat (user, role, text, time, pinned)
-                               VALUES ('🚫 АВТОМОД', 'system', ?, ?, 1)''',
-                            (f'{reason}: @{current_user}', time.time()))
-                conn.commit()
-                conn.close()
+                # Авто-модерация
+                mutes['by'][current_user] = {'reason': reason, 'type': mtype, 'expires': time.time() + duration}
+                save_data()
             else:
-                add_message(current_user, message)
+                # ✅ Сохраняем сообщение + +5 монет
+                chat_messages.append({
+                    'id': len(chat_messages) + 1,
+                    'user': current_user,
+                    'message': message,
+                    'timestamp': time.time(),
+                    'role': user_roles.get(current_user, 'start')
+                })
+                user_economy[current_user]['coins'] = user_economy.get(current_user, {}).get('coins', 0) + 5
+                save_data()
     
-    stats = get_detailed_stats_v37()
-    
-    # ✅ ЧИСТЫЕ F-STRINGS — БЕЗ JINJA2
-    messages_html = ""
-    for msg in get_recent_messages(limit=40):
-        can_delete = (current_user == msg['user'] or 
-                     (is_moderator_v37(current_user) and msg['user'] not in ['CatNap', 'Назар']))
-        delete_btn = '<button class="delete-btn" onclick="deleteMsg({})" title="Удалить">×</button>'.format(msg['id']) if can_delete else ''
-        
-        messages_html += f'''
-        <div class="chat-msg {'pinned' if msg['pinned'] else ''}" data-id="{msg['id']}" data-user="{msg['user']}">
-            <b style="font-size:16px;">{msg["user"]}</b> 
-            <span style="color:#7f8c8d;font-size:14px;">({msg["role"]})</span>
-            <span style="float:right;color:#95a5a6;font-size:13px;">{msg["time_str"]}</span>
-            <div style="clear:both;margin:12px 0 0 0;font-size:15px;">{msg["text"]}</div>
-            {delete_btn}
-        </div>'''
-    
-    announcements_html = ""
+    # ✅ Данные для рендера
+    stats = get_detailed_stats()
+    messages = get_recent_messages(limit=40)
     announcements = get_announcements(limit=3)
-    for ann in announcements:
-        announcements_html += f'''
-        <div class="announcement">
-            📢 <b>{ann["author"]}</b>: {ann["message"]}
-            <span style="float:right;color:#666;font-size:14px;">{ann["time_str"]}</span>
-        </div>'''
     
-    top_msg_html = ""
-    for i, user in enumerate(stats['top_messages'][:3]):
-        medal = "🥇🥈🥉"[i]
-        top_msg_html += f'{medal} {user["username"]}: {user["messages_today"]}<br>'
+    # ✅ ФИКС СЧЁТЧИКА + HTML переменные
+    msg_count = len(messages)
+    chat_form_html = """<form method='POST' id='chat-form' style='padding:25px;background:#f1f3f4;'><div style='display:flex;gap:15px;'><input name='message' id='message-input' placeholder='Напиши сообщение...' maxlength='300' style='flex:1;' required autocomplete='off'><button type='submit'>📤</button></div><div id='char-count' style='color:#7f8c8d;font-size:13px;'>0/300</div></form>""" if current_user else """<div style='padding:30px;text-align:center;background:#f8f9fa;'><h4>🔐 Войди для чата!</h4><a href='/login' class='nav-btn' style='background:#e74c3c;width:auto;padding:12px 25px;'>Войти</a></div>"""
+    profile_nav_html = f"<a href='/profile' class='nav-btn' style='background:#3498db;'>👤 {current_user}</a><a href='/logout' class='nav-btn' style='background:#95a5a6;'>🚪 Выход</a>" if current_user else ""
+    
+    # ✅ Лидерборды
+    top_msg = sorted(user_stats.items(), key=lambda x: x[1].get('messages_today', 0), reverse=True)[:3]
+    top_msg_html = '<br>'.join([f"{i+1}. {user} ({count})" for i, (user, count) in enumerate(top_msg)]) if top_msg else "—"
+    
+    # ✅ Форматирование сообщений
+    messages_html = ''
+    for msg in messages:
+        role_color = {'admin': '#e74c3c', 'moderator': '#27ae60', 'premium': '#f39c12', 'vip': '#3498db', 'start': '#95a5a6'}.get(msg['role'], '#7f8c8d')
+        time_str = time.strftime('%H:%M', time.localtime(msg['timestamp']))
+        can_delete = current_user == msg['user'] or (is_moderator(current_user) and msg['user'] not in ['УЖНАВАЙКИН', 'АВТОМОД'])
+        messages_html += f'''
+            <div class="message" data-id="{msg["id"]}">
+                <span style="color:{role_color};font-weight:bold;">{msg["user"]}</span> 
+                <span style="color:#7f8c8d;font-size:12px;">{time_str}</span>
+                <div style="margin:8px 0;color:#2c3e50;">{msg["message"]}</div>
+                {f'<button onclick="deleteMsg({msg["id"]})" style="background:#e74c3c;color:white;border:none;padding:4px 8px;border-radius:4px;font-size:12px;cursor:pointer;">🗑️</button>' if can_delete else ''}
+            </div>'''
+    
+    # ✅ Анонсы HTML
+    announcements_html = ''
+    for ann in announcements:
+        announcements_html += f'<div style="background:#e8f4fd;padding:15px;margin:10px 0;border-left:4px solid #3498db;"><strong>📢 {ann["username"]}</strong> <small>{ann["time_str"]}</small><div>{ann["message"]}</div></div>'
     
     html = f'''<!DOCTYPE html>
-<html><head><title>🚀 УЖНАВКИН v37.1</title>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>{css_v37}</style></head><body>
+<html><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 УЖНАВАЙКИН v37.4</title>
+    <style>{css_v37}</style>
+</head><body>
 <div class="container">
+    <header>
+        <h1>🚀 <span style="color:#e74c3c;">УЖНАВАЙКИН</span> v37.4</h1>
+        <p>Игровой хаб с чатом, каталогом и экономикой</p>
+    </header>
 
-<div class="header">
-    <h1>🚀 <span style="background:linear-gradient(45deg,#ff6b6b,#feca57); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">УЖНАВКИН v37.1</span></h1>
-    <div style="font-size:18px;">
-        {get_role_display_v37(current_user) if current_user else '<span style="color:#95a5a6">👋 Гость</span>'}
-        {" | Логин: /login" if not current_user else f' | 💰{get_user_coins(current_user):,}'}
-    </div>
-</div>
-
-<!-- ✅ ПРАВИЛА -->
-<div class="rules">
-    <h3>📜 Правила v37.1:</h3>
-    <div style="columns:2;gap:20px;font-size:15px;">
-        <div>🚫 <b>Мат</b> = мут 15мин</div>
-        <div>🚫 <b>Спам</b> = мут 30мин</div>
-        <div>🚫 <b>Флуд</b> = мут 10мин</div>
-        <div>✅ <b>+5💰</b> за сообщение</div>
-        <div>🛡️ <b>Модеры</b> удаляют</div>
-        <div>👑 <b>Админы:</b> CatNap, Назар</div>
-    </div>
-</div>
-
-{announcements_html}
-
-<!-- ✅ СТАТИСТИКА -->
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:25px;margin:30px 0;">
-    <div class="stats">
-        <h3>📊 Статистика</h3>
-        <div class="stat-card">🟢 Онлайн: {stats["online"]}</div>
-        <div class="stat-card">🟡 АФК: {stats["afk"]}</div>
-        <div class="stat-card">👥 Всего: {stats["total"]}</div>
-    </div>
-    
-    <div class="leaderboard">
-        <h3>🏆 Топ сегодня</h3>
-        <div style="font-size:16px;line-height:1.8;">
-            🥇 <b>Сообщения:</b><br>{top_msg_html}
-            <br><small>💰 {stats["top_wealth"][0]["username"] if stats["top_wealth"] else "—"}: {stats["top_wealth"][0]["coins"] if stats["top_wealth"] else 0:,}💰</small>
+    <!-- ✅ ПРАВИЛА ЧАТА (всегда видны) -->
+    <div style="background:#fff3cd;border:1px solid #ffeaa7;padding:15px;margin:20px 0;border-radius:8px;">
+        <h4>📜 Правила чата:</h4>
+        <div style="font-size:14px;color:#856404;line-height:1.5;">
+            • Мат/оскорбления = 15 мин мут<br>
+            • Флуд/Реклама = 30 мин мут<br>
+            • Спам (>5 одинаковых) = 10 мин мут<br>
+            • Модераторы удаляют нарушения
         </div>
     </div>
-</div>
 
-<!-- ✅ ЧАТ -->
-<div class="chat-container">
-    <h3>💬 Чат</h3>
-    <div id="chat-messages" style="min-height:400px;">{messages_html}</div>
-    
-    {"<form method='POST' id='chat-form' style='padding:25px;background:#f1f3f4;'><div style='display:flex;gap:15px;'><input name='message' id='message-input' placeholder='Напиши сообщение...' maxlength='300' style='flex:1;' required autocomplete='off'><button type='submit'>📤</button></div><div id='char-count' style='color:#7f8c8d;font-size:13px;'>0/300</div></form>" if current_user else "<div style='padding:30px;text-align:center;background:#f8f9fa;'><h4>🔐 Войди для чата!</h4><a href='/login' class='nav-btn' style='background:#e74c3c;width:auto;padding:12px 25px;'>Войти</a></div>"}
-</div>
+    <!-- ✅ АНОНСЫ -->
+    <div style="background:#d1ecf1;border:1px solid #bee5eb;padding:15px;margin:20px 0;border-radius:8px;">
+        <h4>📢 Анонсы:</h4>{announcements_html}
+    </div>
 
-<!-- ✅ НАВИГАЦИЯ -->
-<div class="nav">
-    <a href="/catalog" class="nav-btn" style="background:#27ae60;">📁 Каталог</a>
-    <a href="/leaderboards" class="nav-btn" style="background:#f39c12;">🏆 Лидерборды</a>
-    <a href="/shop" class="nav-btn" style="background:#9b59b6;">💰 Магазин</a>
-    <a href="/admin" class="nav-btn" style="background:#e74c3c;">⚙️ Админка</a>
-    {"<a href='/profile' class='nav-btn' style='background:#3498db;'>👤 {current_user}</a><a href='/logout' class='nav-btn' style='background:#95a5a6;'>🚪 Выход</a>" if current_user else ""}
-</div>
+    <!-- ✅ СТАТИСТИКА + ЛИДЕРБОРДЫ -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:25px;margin:30px 0;">
+        <div class="stats">
+            <h3>📊 Статистика</h3>
+            <div class="stat-card">🟢 Онлайн: {stats["online"]}</div>
+            <div class="stat-card">🟡 АФК: {stats["afk"]}</div>
+            <div class="stat-card">👥 Всего: {stats["total"]}</div>
+        </div>
+        
+        <div class="leaderboard">
+            <h3>🏆 Топ сегодня</h3>
+            <div style="font-size:16px;line-height:1.8;">
+                🥇 <b>Сообщения:</b><br>{top_msg_html}
+                <br><small>💰 {stats["top_wealth"][0]["username"] if stats.get("top_wealth") else "—"}: {stats["top_wealth"][0]["coins"] if stats.get("top_wealth") else 0:,}💰</small>
+            </div>
+        </div>
+    </div>
 
+    <!-- ✅ ЧАТ -->
+    <div class="chat-container">
+        <h3>💬 Чат <span id="msg-count">({msg_count})</span></h3>
+        <div id="chat-messages" style="min-height:400px;">{messages_html}</div>
+        {chat_form_html}
+    </div>
+
+    <!-- ✅ НАВИГАЦИЯ -->
+    <div class="nav">
+        <a href="/catalog" class="nav-btn" style="background:#27ae60;">📁 Каталог</a>
+        <a href="/leaderboards" class="nav-btn" style="background:#f39c12;">🏆 Лидерборды</a>
+        <a href="/shop" class="nav-btn" style="background:#9b59b6;">💰 Магазин</a>
+        <a href="/admin" class="nav-btn" style="background:#e74c3c;">⚙️ Админка</a>
+        {profile_nav_html}
+    </div>
 </div>
 
 <script>
-let msgCount = {len(get_recent_messages())};
+let msgCount = {msg_count};
 document.getElementById('msg-count') && (document.getElementById('msg-count').textContent = `(${msgCount})`);
 document.getElementById('message-input')?.addEventListener('input', e => {{
     document.getElementById('char-count').textContent = e.target.value.length + '/300';
@@ -448,7 +451,6 @@ async function deleteMsg(id) {{
 </body></html>'''
     
     return html
-
 
 # ✅ ФУНКЦИИ ДЛЯ СООБЩЕНИЙ
 def get_recent_messages(limit=50):
@@ -978,5 +980,6 @@ if __name__ == '__main__':
     print("👑 Админы: CatNap/Назар")
     print("✅ Все 9 пунктов выполнено!")
     app.run(host='0.0.0.0', port=port, debug=False)
+
 
 
