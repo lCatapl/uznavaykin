@@ -654,20 +654,24 @@ def shop():
             </button>
         </div>'''
     
-    html += '</div><script>
-    function buyItem(itemId) {{
-        fetch("/api/buy", {{method:"POST", headers:{{"Content-Type":"application/json"}}, 
-        body:JSON.stringify({{item:itemId}})}})
-        .then(r=>r.json()).then(data => {{
-            if(data.success) {{
-                alert("✅ " + data.message);
-                location.reload();
-            }} else {{
-                alert("❌ " + data.error);
-            }}
-        }});
-    }}
-    </script>'
+    html += '''</div>
+<script>
+function buyItem(itemId) {
+    fetch("/api/buy", {
+        method:"POST", 
+        headers:{"Content-Type":"application/json"}, 
+        body:JSON.stringify({item:itemId})
+    })
+    .then(r=>r.json()).then(data => {
+        if(data.success) {
+            alert("✅ " + data.message);
+            location.reload();
+        } else {
+            alert("❌ " + data.error);
+        }
+    });
+}
+</script>'''
     
     return f'<!DOCTYPE html><html><head><title>🛒 Магазин - Узнавайкин</title><meta charset="utf-8"><style>{css_v36_7}</style></head><body><div class="container">{html}<a href="/" class="nav-btn" style="background:#2c3e50;">🏠 Главная</a></div></body></html>'
 
@@ -843,3 +847,4 @@ if __name__ == '__main__':
     # ✅ Админы: CatNap(120187), Назар(120187)
     # ✅ Все роуты: /, /login, /shop, /economy, /privileges, /profiles, /admin
     app.run(host='0.0.0.0', port=port, debug=False)
+
