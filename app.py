@@ -34,8 +34,10 @@ bans = {}  # IP баны
 friends = {}  # Друзья
 blocked = {}  # Блокировка
 leaderboards = {
-    'messages_today': {}, 'messages_week': {}, 
-    'online_time': {}, 'wealth': {}  # Топ по монетам
+    'messages_today': {},      # {дата: {ник: количество}}
+    'messages_week': {},       # {неделя: {ник: количество}}
+    'online_time': {},         # {ник: секунды}
+    'wealth': {}               # {ник: монеты}
 }
 pinned_messages = []  # 📌 Закреплённые
 moderation_logs = []  # Логи модерации
@@ -115,24 +117,47 @@ def load_data():
     
     save_data()
 
-def save_data():
-    """Сохранение ВСЕХ данных"""
-    data = {
-        'users': users, 'user_roles': user_roles, 'user_profiles': user_profiles,
-        'user_activity': user_activity, 'user_stats': user_stats,
-        'user_economy': user_economy, 'user_inventory': user_inventory,
-        'chat_messages': chat_messages[-1000:],  # Лимит сообщений
-        'mutes': mutes, 'catalog': catalog, 'announcements': announcements[-50:],
-        'notifications': {k: v for k, v in notifications.items() if time.time() - v['time'] < 86400},  # Удаляем старые
-        'bans': bans, 'friends': friends, 'blocked': blocked,
-        'leaderboards': leaderboards, 'pinned_messages': pinned_messages,
-        'moderation_logs': moderation_logs[-500:], 'settings': settings
-    }
-    try:
-        with open(data_file, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2, default=str)
-    except:
-        pass
+# В ЧАСТИ 1 заменить инициализацию leaderboards:
+leaderboards = {
+    'messages_today': {},      # {дата: {ник: количество}}
+    'messages_week': {},       # {неделя: {ник: количество}}
+    'online_time': {},         # {ник: секунды}
+    'wealth': {}               # {ник: монеты}
+}
+
+# ✅ УЛУЧШЕННАЯ ФУНКЦИЯ СОХРАНЕНИЯ (каждые 10 сек)
+last_save = 0
+def save_data(force=False):
+    global last_save
+    now = get_timestamp()
+    if force or now - last_save > 10:  # Каждые 10 сек
+        last_save = now
+        data = {
+            'users': users, 
+            'user_roles': user_roles, 
+            'user_profiles': user_profiles,
+            'user_activity': {k: v for k, v in user_activity.items() if now - v < 3600},  # Только активные
+            'user_stats': user_stats,
+            'user_economy': user_economy,
+            'user_inventory': user_inventory,
+            'chat_messages': chat_messages[-1000:],  # Последние 1000
+            'mutes': mutes,
+            'catalog': catalog,
+            'announcements': announcements[-50:],
+            'notifications': {k: [n for n in v if now - n['time'] < 86400] for k, v in notifications.items()},
+            'bans': bans,
+            'friends': friends,
+            'blocked': blocked,
+            'leaderboards': leaderboards,
+            'pinned_messages': pinned_messages,
+            'moderation_logs': moderation_logs[-500:]
+        }
+        try:
+            with open(data_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2, default=str)
+        except Exception as e:
+            print(f"Ошибка сохранения: {e}")
+
 
 # ✅ ИНИЦИАЛИЗАЦИЯ
 load_data()
@@ -183,17 +208,14 @@ def calculate_stats():
 def auto_moderate(message, username):
     message_lower = message.lower()
     
-    # Мат
     for word in bad_words:
         if word in message_lower:
-            return f'🚫 Мат ({word}) — авто-мут 10 мин', 600  # 10 минут
+            return f'🚫 Мат ({word}) — авто-мут 10 мин', 600
     
-    # Спам/реклама
     for pattern in spam_patterns:
         if re.search(pattern, message):
-            return f'🚫 Спам/реклама — авто-мут 30 мин', 1800  # 30 минут
+            return f'🚫 Спам/реклама — авто-мут 30 мин', 1800
     
-    # Флуд (5 одинаковых подряд)
     recent_msgs = [m['text'].lower() for m in chat_messages[-5:] if m['user'] == username]
     if len(recent_msgs) >= 3 and len(set(recent_msgs)) == 1:
         return f'🚫 Флуд — авто-мут 1 час', 3600
@@ -206,15 +228,8 @@ def add_coins(username, amount, reason=''):
         user_economy[username] = {'coins': 0, 'bank': 0, 'last_bank': get_timestamp()}
     
     user_economy[username]['coins'] += amount
-    user_stats[username]['coins_earned'] = user_stats.get(username, {}).get('coins_earned', 0) + amount
+    user_stats.setdefault(username, {})['coins_earned'] = user_stats.get(username, {}).get('coins_earned', 0) + amount
     
-    # Лидерборд богатства
-    if username not in leaderboards['wealth']:
-        leaderboards['wealth'][username] = 0
-    leaderboards['wealth'][username] += amount
-    
-    log = f"💰 {username} +{amount} монет ({reason})"
-    print(log)
     save_data()
     return user_economy[username]['coins']
 
@@ -228,51 +243,48 @@ def deposit_bank(username, amount):
     return False
 
 def collect_bank_interest():
-    """3% каждый час"""
     now = get_timestamp()
     for username in user_economy:
-        if now - user_economy[username].get('last_bank', 0) > 3600:  # 1 час
+        if now - user_economy[username].get('last_bank', 0) > 3600:
             interest = int(user_economy[username]['bank'] * 0.03)
             if interest > 0:
                 user_economy[username]['coins'] += interest
                 user_economy[username]['last_bank'] = now
-                print(f"🏦 {username} получил {interest} монет %")
     save_data()
 
-# ✅ ЛИДЕРБОРДЫ v36
+# ✅ ЛИДЕРБОРДЫ v36 (ИСПРАВЛЕНО!)
 def update_leaderboards(username):
     now = datetime.now()
-    today = now.strftime('%Y-%m-%d')
-    week = now.strftime('%Y-%W')
+    today_key = now.strftime('%Y-%m-%d')
+    week_key = now.strftime('%Y-%W')
     
-    # Сообщения сегодня
-    if today not in leaderboards['messages_today']:
-        leaderboards['messages_today'][today] = {}
-    leaderboards['messages_today'][today][username] = leaderboards['messages_today'][today].get(username, 0) + 1
+    # ✅ ИСПРАВЛЕНО: Используем .setdefault()
+    leaderboards['messages_today'].setdefault(today_key, {})
+    leaderboards['messages_today'][today_key].setdefault(username, 0)
+    leaderboards['messages_today'][today_key][username] += 1
     
-    # Сообщения за неделю
-    leaderboards['messages_week'][week] = leaderboards['messages_week'].get(week, {})
-    leaderboards['messages_week'][week][username] = leaderboards['messages_week'][week].get(username, 0) + 1
+    leaderboards['messages_week'].setdefault(week_key, {})
+    leaderboards['messages_week'][week_key].setdefault(username, 0)
+    leaderboards['messages_week'][week_key][username] += 1
     
-    # Время онлайн
-    if username in user_activity:
-        user_stats[username]['online_time'] = user_stats.get(username, {}).get('online_time', 0) + 1
-        leaderboards['online_time'][username] = user_stats[username]['online_time']
+    user_stats.setdefault(username, {})['online_time'] = user_stats.get(username, {}).get('online_time', 0) + 1
+    leaderboards['online_time'][username] = user_stats[username]['online_time']
     
     save_data()
 
 def get_top_leaderboard(category='messages_today', limit=10):
-    today = datetime.now().strftime('%Y-%m-%d')
-    week = datetime.now().strftime('%Y-%W')
+    now = datetime.now()
+    today_key = now.strftime('%Y-%m-%d')
+    week_key = now.strftime('%Y-%W')
     
     if category == 'messages_today':
-        data = leaderboards['messages_today'].get(today, {})
+        data = leaderboards['messages_today'].get(today_key, {})
     elif category == 'messages_week':
-        data = leaderboards['messages_week'].get(week, {})
+        data = leaderboards['messages_week'].get(week_key, {})
     elif category == 'online_time':
-        data = leaderboards['online_time']
+        data = leaderboards.get('online_time', {})
     elif category == 'wealth':
-        data = leaderboards['wealth']
+        data = leaderboards.get('wealth', {})
     else:
         data = {}
     
@@ -284,21 +296,15 @@ def is_muted(username):
         return False
     
     expires = mutes['expires'].get(username, 0)
-    if expires == 0:  # Навсегда
-        return True
-    if get_timestamp() < expires:
+    if expires == 0 or get_timestamp() < expires:
         return True
     else:
-        # Мут истёк
         remove_mute(username)
         return False
 
 def remove_mute(username):
-    mutes['by'].pop(username, None)
-    mutes['reason'].pop(username, None)
-    mutes['muted_by'].pop(username, None)
-    mutes['duration'].pop(username, None)
-    mutes['expires'].pop(username, None)
+    for key in ['by', 'reason', 'muted_by', 'duration', 'expires']:
+        mutes[key].pop(username, None)
     save_data()
 
 def add_mute(username, admin, duration, reason):
@@ -318,6 +324,7 @@ def add_mute(username, admin, duration, reason):
         'reason': reason
     })
     save_data()
+
 # ✅ КАТАЛОГ CRUD v36 (создание/удаление папок + файлов)
 def get_catalog_content(path='root'):
     """Получить содержимое папки с рекурсивной проверкой"""
@@ -1333,3 +1340,4 @@ def not_found(e):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
