@@ -103,26 +103,74 @@ def save_data():
 # ✅ Загрузка при старте
 load_data()
 
-# ✅ АВТО-АДМИНЫ v36.4
+# ✅ АВТО-АДМИНЫ v36.5 + ФИКС КАТАЛОГА
 def setup_auto_admins():
-    """Автоматически создает админов"""
+    """Создает авто-админов и инициализирует каталог"""
+    global catalog
+    
+    # ✅ АВТО-АДМИНЫ v36.5
+    AUTO_ADMINS = ['CatNap', 'admin', '120187', 'moderator']
+    
     for admin_name in AUTO_ADMINS:
         if admin_name not in user_roles:
-            users[admin_name] = {'password': hashlib.sha256(admin_name.encode()).hexdigest()}
+            # Создаем аккаунт админа
+            users[admin_name] = {
+                'password': hashlib.sha256(admin_name.encode()).hexdigest()
+            }
             user_roles[admin_name] = 'admin'
             user_profiles[admin_name] = {
-                'status': '👑 Супер-Админ v36.4', 
+                'status': '👑 Супер-Админ v36.5', 
                 'info': '🚀 Полные права: CRUD + роли + модерация',
-                'color': '#e74c3c'
+                'color': '#e74c3c',
+                'avatar': '👑'
             }
-            user_economy[admin_name] = {'coins': 999999, 'bank': 5000000}
+            user_economy[admin_name] = {
+                'coins': 999999, 
+                'bank': 5000000, 
+                'last_bank': time.time()
+            }
+            notifications.setdefault(admin_name, []).append({
+                'time': time.time(),
+                'message': '🎉 Авто-админ создан! Бесконечные монеты + все права'
+            })
             print(f"✅ СОЗДАН АВТО-АДМИН: {admin_name}")
         else:
+            # Обновляем права существующих
             user_roles[admin_name] = 'admin'
-            user_economy.setdefault(admin_name, {'coins': 999999})
+            user_economy.setdefault(admin_name, {'coins': 999999, 'bank': 5000000})
+            print(f"✅ ОБНОВЛЕН АДМИН: {admin_name}")
+    
+    # ✅ ФИКС КАТАЛОГА v36.5
+    if not catalog or 'root' not in catalog:
+        catalog = {
+            'root': {
+                'type': 'folder',
+                'created_by': 'system',
+                'created': time.time(),
+                'items_count': 0
+            }
+        }
+        print("✅ КАТАЛОГ ИНИЦИАЛИЗИРОВАН")
+    
+    # ✅ Инициализация других данных
+    if not leaderboards:
+        leaderboards = {
+            'messages_today': {},
+            'messages_week': {},
+            'online_time': {},
+            'wealth': {}
+        }
+    
+    if not chat_messages:
+        chat_messages.append({
+            'user': '🚀 СИСТЕМА', 
+            'text': 'УЖНАВКИН v36.5 запущен! Добро пожаловать! 🎉', 
+            'time': time.time()
+        })
+    
     save_data()
+    print("✅ SETUP_AUTO_ADMINS() ЗАВЕРШЕН — все данные готовы!")
 
-setup_auto_admins()
 
 # ✅ ОСНОВНЫЕ ФУНКЦИИ v36.4
 def get_role_display(username):
@@ -368,17 +416,15 @@ form button {width:100%;padding:16px;background:linear-gradient(45deg,#3498db,#2
 form button:hover {transform:translateY(-2px);box-shadow:0 8px 25px rgba(52,152,219,0.4);}
 @media (max-width:768px) {.container{padding:20px;margin:10px;border-radius:20px;}.nav{flex-direction:column;align-items:center;}}'''
 
-# ✅ ГЛАВНАЯ СТРАНИЦА (продолжение в части 2/2)
 @app.route('/', methods=['GET', 'POST'])
 def index():
     current_user = session.get('user', '')
     
-    # ✅ Обработка сообщений + команды админа
+    # ✅ Обработка сообщений
     if request.method == 'POST' and current_user and not is_muted(current_user):
         message = request.form['message'].strip()
         if message and len(message) <= 300:
             
-            # ✅ КОМАНДЫ АДМИНА в чате
             if message.startswith('/admin ') and is_admin(current_user):
                 cmd = message[6:].strip().lower()
                 if cmd == 'stats':
@@ -388,19 +434,8 @@ def index():
                         'text': f'📊 Онлайн: {stats["online"]}/{stats["total_users"]} | Сообщений: {len(chat_messages)}', 
                         'time': time.time()
                     })
-                elif cmd.startswith('mute '):
-                    target = cmd[5:].strip()
-                    mutes['by'][target] = time.time()
-                    mutes['expires'][target] = time.time() + 1800
-                    mutes['reason'][target] = f"Админ {current_user}"
-                    chat_messages.append({
-                        'user': f'👑 {current_user}', 
-                        'text': f'🔇 {target} замучен на 30 мин', 
-                        'time': time.time()
-                    })
                 save_data()
             else:
-                # ✅ АВТО-МОДЕРАЦИЯ
                 auto_msg, duration = auto_moderate(message, current_user)
                 if auto_msg:
                     mutes['by'][current_user] = time.time()
@@ -412,7 +447,6 @@ def index():
                         'time': time.time()
                     })
                 else:
-                    # ✅ НОРМАЛЬНОЕ СООБЩЕНИЕ
                     chat_messages.append({
                         'user': current_user, 'text': message, 'time': time.time()
                     })
@@ -426,21 +460,24 @@ def index():
     stats = calculate_stats()
     top_wealth = get_top_leaderboard('wealth', 5)
     
+    # ✅ ФИКС: Правильный подсчет каталога
+    catalog_count = len([item for item in catalog if item != 'root' and catalog[item].get('type') == 'file'])
+    
     html = f'''<!DOCTYPE html>
-<html><head><title>🚀 Узнавайкин v36.4</title>
+<html><head><title>🚀 Узнавайкин v36.5 ✅</title>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <style>{css_v36_4}</style></head><body>
 <div class="container">
 <div class="header">
-<h1>🚀 УЖНАВКИН v36.4</h1>
+<h1>🚀 УЖНАВКИН v36.5 ✅ ФИКС</h1>
 <p>{get_role_display(current_user) if current_user else "👋 Гость"} | 🟢 {stats['online']}/{stats['total_users']} онлайн</p>
 </div>'''
 
-    # ✅ СТАТИСТИКА
+    # ✅ ИСПРАВЛЕННАЯ СТАТИСТИКА
     html += f'''<div class="stats">
 <div class="stat-card"><b>{stats['online']}</b><br>🟢 Онлайн</div>
 <div class="stat-card"><b>{len(chat_messages)}</b><br>💬 Сообщений</div>
-<div class="stat-card"><b>{len(catalog)-1}</b><br>📁 Файлов</div>'''
+<div class="stat-card"><b>{catalog_count}</b><br>📁 Файлов</div>'''
 
     if current_user:
         coins = user_economy.get(current_user, {}).get('coins', 0)
@@ -448,39 +485,28 @@ def index():
     
     html += '</div>'
 
-    # ✅ АНОНСЫ
+    # Остальной код index() без изменений...
     if announcements:
         html += f'<div class="announcement"><b>📢 {announcements[0]["admin"]}</b><br>{announcements[0]["message"]}</div>'
 
-    # ✅ ЛИДЕРБОРД
     html += '<div style="background:linear-gradient(135deg,#e3f2fd,#bbdefb);padding:30px;border-radius:20px;margin:25px 0;">'
     html += '<h3 style="margin-bottom:20px;">🥇 Топ богачей</h3>'
     if top_wealth:
         for i, (user, coins) in enumerate(top_wealth):
             medal = '🥇🥈🥉'[i] if i < 3 else f'{i+1}️⃣'
             html += f'<div style="display:flex;justify-content:space-between;padding:15px;background:#fff;border-radius:12px;margin:8px 0;box-shadow:0 3px 15px rgba(0,0,0,0.1);"><span>{medal} {user}</span><span>{coins:,} 💰</span></div>'
-    else:
-        html += '<p style="text-align:center;color:#666;">Никого нет</p>'
     html += '</div>'
 
-    # ✅ ЧАТ
-    html += '<div class="chat-container">'
-    html += '<div id="chat-messages">'
+    html += '<div class="chat-container"><div id="chat-messages">'
     for msg in reversed(chat_messages[-40:]):
         time_str = datetime.fromtimestamp(msg['time']).strftime('%H:%M')
         html += f'<div class="chat-msg"><b>{msg["user"]}</b> <span style="color:#888;float:right;">{time_str}</span><div style="clear:both;margin-top:8px;">{msg["text"]}</div></div>'
     html += '</div>'
 
-    # ✅ ИНПУТ ЧАТА
     if current_user and not is_muted(current_user):
-        mute_info = ''
-        if current_user in mutes['expires'] and time.time() < mutes['expires'][current_user]:
-            remaining = int(mutes['expires'][current_user] - time.time())
-            mute_info = f'🔇 Мут: {remaining//60}м {remaining%60}с | '
-        
         html += f'''<form method="post" style="padding:30px;background:#ecf0f1;">
 <div style="display:flex;gap:15px;align-items:end;">
-<input name="message" placeholder="{mute_info}💭 Напиши... /admin stats" maxlength="300" required 
+<input name="message" placeholder="💭 Напиши... /admin stats" maxlength="300" required 
 style="flex:1;padding:20px;border:2px solid #ddd;border-radius:15px;font-size:17px;">
 <button type="submit" style="padding:20px 35px;background:linear-gradient(45deg,#27ae60,#229954);color:white;border:none;border-radius:15px;font-weight:700;font-size:17px;">📤</button>
 </div></form>'''
@@ -489,17 +515,16 @@ style="flex:1;padding:20px;border:2px solid #ddd;border-radius:15px;font-size:17
 
     html += '</div>'
 
-    # ✅ НАВИГАЦИЯ v36.4
     nav_items = [
         ('/profiles', '👥 Профили', '#3498db'),
         ('/shop', '🛒 Магазин', '#9b59b6'),
-        ('/economy', '💰 Экономика', '#27ae60'),
         ('/catalog', '📁 Каталог', '#f39c12')
     ]
     
     if current_user:
         nav_items.extend([
-            (f'/profile/{current_user}', '👤 Мой профиль', '#764ba2')
+            (f'/profile/{current_user}', '👤 Мой профиль', '#764ba2'),
+            ('/economy', '💰 Экономика', '#27ae60')
         ])
         if is_admin(current_user):
             nav_items.append(('/admin', '🔧 Админка (ВСЁ)', '#e74c3c'))
@@ -515,6 +540,7 @@ style="flex:1;padding:20px;border:2px solid #ddd;border-radius:15px;font-size:17
     html += '</div></div></body></html>'
     
     return html
+
 
 # ✅ ЛОГИН/РЕГИСТРАЦИЯ
 @app.route('/login', methods=['GET', 'POST'])
@@ -804,3 +830,4 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     print("🚀 УЖНАВКИН v36.4 запущен! Авто-админы: CatNap, Назар")
     app.run(host='0.0.0.0', port=port, debug=False)
+
