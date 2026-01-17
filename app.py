@@ -300,16 +300,13 @@ setup_auto_admins_v37()
 print("🚀 УЗНАВАЙКИН v37.0 ЧАСТЬ 1/3 — ОСНОВА + БД + АДМИНЫ + МОДЕРАЦИЯ!")
 print("✅ Готово к запуску! Скажи '2/3' для главной + чата!")
 
-# ✅ ГЛАВНАЯ СТРАНИЦА + ЧАТ С УДАЛЕНИЕМ
 @app.route('/', methods=['GET', 'POST'])
 def index():
     current_user = session.get('user', '')
     
-    # ✅ Обновление активности
     if current_user:
         save_user_activity(current_user)
     
-    # ✅ POST — отправка сообщения
     if request.method == 'POST' and current_user:
         message = request.form.get('message', '').strip()
         if message and len(message) <= 300 and not is_muted_or_banned(current_user):
@@ -326,143 +323,125 @@ def index():
                 conn.close()
             else:
                 add_message(current_user, message)
-        elif is_muted_or_banned(current_user):
-            return jsonify({'error': '🚫 Вы замучены/забанены!'})
     
-    # ✅ СТАТИСТИКА + ЛИДЕРБОРДЫ
     stats = get_detailed_stats_v37()
-    messages = get_recent_messages(limit=40)
-    announcements = get_announcements(limit=3)
     
-    # ✅ HTML ГЛАВНОЙ v37
+    # ✅ ЧИСТЫЕ F-STRINGS — БЕЗ JINJA2
+    messages_html = ""
+    for msg in get_recent_messages(limit=40):
+        can_delete = (current_user == msg['user'] or 
+                     (is_moderator_v37(current_user) and msg['user'] not in ['CatNap', 'Назар']))
+        delete_btn = '<button class="delete-btn" onclick="deleteMsg({})" title="Удалить">×</button>'.format(msg['id']) if can_delete else ''
+        
+        messages_html += f'''
+        <div class="chat-msg {'pinned' if msg['pinned'] else ''}" data-id="{msg['id']}" data-user="{msg['user']}">
+            <b style="font-size:16px;">{msg["user"]}</b> 
+            <span style="color:#7f8c8d;font-size:14px;">({msg["role"]})</span>
+            <span style="float:right;color:#95a5a6;font-size:13px;">{msg["time_str"]}</span>
+            <div style="clear:both;margin:12px 0 0 0;font-size:15px;">{msg["text"]}</div>
+            {delete_btn}
+        </div>'''
+    
+    announcements_html = ""
+    announcements = get_announcements(limit=3)
+    for ann in announcements:
+        announcements_html += f'''
+        <div class="announcement">
+            📢 <b>{ann["author"]}</b>: {ann["message"]}
+            <span style="float:right;color:#666;font-size:14px;">{ann["time_str"]}</span>
+        </div>'''
+    
+    top_msg_html = ""
+    for i, user in enumerate(stats['top_messages'][:3]):
+        medal = "🥇🥈🥉"[i]
+        top_msg_html += f'{medal} {user["username"]}: {user["messages_today"]}<br>'
+    
     html = f'''<!DOCTYPE html>
-<html><head><title>🚀 УЗНАВАЙКИН v37.0</title>
+<html><head><title>🚀 УЖНАВКИН v37.1</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>{css_v37}</style></head><body>
 <div class="container">
-    
-<!-- ✅ ХЕДЕР -->
+
 <div class="header">
-    <h1>🚀 <span style="background:linear-gradient(45deg,#ff6b6b,#feca57); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">УЖНАВКИН v37</span></h1>
+    <h1>🚀 <span style="background:linear-gradient(45deg,#ff6b6b,#feca57); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">УЖНАВКИН v37.1</span></h1>
     <div style="font-size:18px;">
         {get_role_display_v37(current_user) if current_user else '<span style="color:#95a5a6">👋 Гость</span>'}
         {" | Логин: /login" if not current_user else f' | 💰{get_user_coins(current_user):,}'}
     </div>
 </div>
 
-<!-- ✅ ПРАВИЛА ЧАТА (ВСЕГДА ВИДНЫ) -->
+<!-- ✅ ПРАВИЛА -->
 <div class="rules">
-    <h3>📜 Правила v37:</h3>
+    <h3>📜 Правила v37.1:</h3>
     <div style="columns:2;gap:20px;font-size:15px;">
-        <div>🚫 <b>Мат</b> = мут 15 мин (все вариации)</div>
-        <div>🚫 <b>Флуд</b> = мут 30 мин (ссылки/реклама)</div>
-        <div>🚫 <b>Спам</b> = мут 10 мин (3 одинаковых)</div>
+        <div>🚫 <b>Мат</b> = мут 15мин</div>
+        <div>🚫 <b>Спам</b> = мут 30мин</div>
+        <div>🚫 <b>Флуд</b> = мут 10мин</div>
         <div>✅ <b>+5💰</b> за сообщение</div>
-        <div>🛡️ <b>Модеры</b> удаляют (кроме админов)</div>
-        <div>👑 <b>Админы:</b> CatNap, Назар (120187)</div>
+        <div>🛡️ <b>Модеры</b> удаляют</div>
+        <div>👑 <b>Админы:</b> CatNap, Назар</div>
     </div>
 </div>
 
-<!-- ✅ АНОНСЫ -->
-{% for ann in announcements %}
-<div class="announcement">
-    📢 <b>{{ann.author}}</b>: {{ann.message}}
-    <span style="float:right;color:#666;font-size:14px;">{{ann.time_str}}</span>
-</div>
-{% endfor %}
+{announcements_html}
 
-<!-- ✅ СТАТИСТИКА + ЛИДЕРБОРДЫ -->
+<!-- ✅ СТАТИСТИКА -->
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:25px;margin:30px 0;">
     <div class="stats">
         <h3>📊 Статистика</h3>
-        <div class="stat-card">🟢 Онлайн: {stats['online']}</div>
-        <div class="stat-card">🟡 АФК: {stats['afk']}</div>
-        <div class="stat-card">👥 Всего: {stats['total']}</div>
+        <div class="stat-card">🟢 Онлайн: {stats["online"]}</div>
+        <div class="stat-card">🟡 АФК: {stats["afk"]}</div>
+        <div class="stat-card">👥 Всего: {stats["total"]}</div>
     </div>
     
     <div class="leaderboard">
         <h3>🏆 Топ сегодня</h3>
         <div style="font-size:16px;line-height:1.8;">
-            🥇 <b>Сообщения:</b><br>
-            {% for i, user in enumerate(stats['top_messages'][:3]) %}
-                {{ "🥇🥈🥉"['0' if i==0 else '1' if i==1 else '2'] }} {{user.username}}: {{user.messages_today}}
-            {% endfor %}
-            <br><small>💰 <b>Богачи:</b> {stats['top_wealth'][0].username}: {stats['top_wealth'][0].coins:,}💰</small>
+            🥇 <b>Сообщения:</b><br>{top_msg_html}
+            <br><small>💰 {stats["top_wealth"][0]["username"] if stats["top_wealth"] else "—"}: {stats["top_wealth"][0]["coins"] if stats["top_wealth"] else 0:,}💰</small>
         </div>
     </div>
 </div>
 
-<!-- ✅ ЧАТ С УДАЛЕНИЕМ -->
+<!-- ✅ ЧАТ -->
 <div class="chat-container">
-    <h3>💬 Чат <span id="msg-count" style="color:#666">(0)</span></h3>
-    <div id="chat-messages" style="min-height:400px;">
-    {% for msg in messages %}
-        <div class="chat-msg {{'pinned' if msg.pinned else ''}}" data-id="{{msg.id}}" data-user="{{msg.user}}">
-            <b style="font-size:16px;">{{msg.user}}</b> 
-            <span style="color:#7f8c8d;font-size:14px;">({{msg.role}})</span>
-            <span style="float:right;color:#95a5a6;font-size:13px;">{{msg.time_str}}</span>
-            <div style="clear:both;margin:12px 0 0 0;font-size:15px;">{{msg.text}}</div>
-            {% if current_user == msg.user or (is_moderator_v37(current_user) and msg.user != 'CatNap' and msg.user != 'Назар') %}
-            <button class="delete-btn" onclick="deleteMsg({{msg.id}})" title="Удалить">×</button>
-            {% endif %}
-        </div>
-    {% endfor %}
-    </div>
+    <h3>💬 Чат</h3>
+    <div id="chat-messages" style="min-height:400px;">{messages_html}</div>
     
-    {% if current_user %}
-    <form method="POST" id="chat-form" style="padding:25px;background:#f1f3f4;">
-        <div style="display:flex;gap:15px;">
-            <input name="message" id="message-input" placeholder="Напиши сообщение... (макс. 300 символов)" 
-                   maxlength="300" style="flex:1;" required autocomplete="off">
-            <button type="submit">📤</button>
-        </div>
-        <div id="char-count" style="color:#7f8c8d;font-size:13px;">0/300</div>
-    </form>
-    {% else %}
-    <div style="padding:30px;text-align:center;background:#f8f9fa;">
-        <h4>🔐 Войди для чата!</h4>
-        <a href="/login" class="nav-btn" style="background:#e74c3c;width:auto;padding:12px 25px;">Войти</a>
-    </div>
-    {% endif %}
+    {"<form method='POST' id='chat-form' style='padding:25px;background:#f1f3f4;'><div style='display:flex;gap:15px;'><input name='message' id='message-input' placeholder='Напиши сообщение...' maxlength='300' style='flex:1;' required autocomplete='off'><button type='submit'>📤</button></div><div id='char-count' style='color:#7f8c8d;font-size:13px;'>0/300</div></form>" if current_user else "<div style='padding:30px;text-align:center;background:#f8f9fa;'><h4>🔐 Войди для чата!</h4><a href='/login' class='nav-btn' style='background:#e74c3c;width:auto;padding:12px 25px;'>Войти</a></div>"}
 </div>
 
-<!-- ✅ НАВИГАЦИЯ v37 -->
+<!-- ✅ НАВИГАЦИЯ -->
 <div class="nav">
     <a href="/catalog" class="nav-btn" style="background:#27ae60;">📁 Каталог</a>
     <a href="/leaderboards" class="nav-btn" style="background:#f39c12;">🏆 Лидерборды</a>
     <a href="/shop" class="nav-btn" style="background:#9b59b6;">💰 Магазин</a>
     <a href="/admin" class="nav-btn" style="background:#e74c3c;">⚙️ Админка</a>
-    {% if current_user %}
-    <a href="/profile" class="nav-btn" style="background:#3498db;">👤 {{current_user}}</a>
-    <a href="/logout" class="nav-btn" style="background:#95a5a6;">🚪 Выход</a>
-    {% endif %}
+    {"<a href='/profile' class='nav-btn' style='background:#3498db;'>👤 {current_user}</a><a href='/logout' class='nav-btn' style='background:#95a5a6;'>🚪 Выход</a>" if current_user else ""}
 </div>
 
 </div>
 
 <script>
-let msgCount = {len(messages)};
-document.getElementById('msg-count').textContent = `(${msgCount})`;
-document.getElementById('message-input')?.addEventListener('input', function() {{
-    document.getElementById('char-count').textContent = this.value.length + '/300';
+let msgCount = {len(get_recent_messages())};
+document.getElementById('msg-count') && (document.getElementById('msg-count').textContent = `(${msgCount})`);
+document.getElementById('message-input')?.addEventListener('input', e => {{
+    document.getElementById('char-count').textContent = e.target.value.length + '/300';
 }});
-
 async function deleteMsg(id) {{
     if(confirm('Удалить сообщение?')) {{
         try {{
-            await fetch(`/api/delete/{{{id}}}`, {{method:'POST'}});
+            await fetch(`/api/delete/${{id}}`, {{method:'POST'}});
             document.querySelector(`[data-id="${{id}}"]`).remove();
-            msgCount--;
-            document.getElementById('msg-count').textContent = `(${msgCount})`;
         }} catch(e) {{ alert('Ошибка удаления'); }}
     }}
 }}
 </script>
 </body></html>'''
     
-    return render_template_string(html, messages=messages, stats=stats, 
-                                announcements=announcements, current_user=current_user)
+    return html
+
 
 # ✅ ФУНКЦИИ ДЛЯ СООБЩЕНИЙ
 def get_recent_messages(limit=50):
@@ -998,3 +977,4 @@ if __name__ == '__main__':
     print("👑 Админы: CatNap/Назар")
     print("✅ Все 9 пунктов выполнено!")
     app.run(host='0.0.0.0', port=port, debug=False)
+
