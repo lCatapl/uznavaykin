@@ -518,7 +518,7 @@ def index():
 
 <script>
 let msgCount = {msg_count};
-document.getElementById('msg-count').textContent = `(${msgCount})`;
+document.getElementById('msg-count').textContent = '(' + msgCount + ')';
 
 // ✅ Счетчик символов
 document.getElementById('message-input')?.addEventListener('input', e => {{
@@ -853,6 +853,7 @@ if __name__ == '__main__':
 
 print("🎉 УЖНАВАЙКИН v37.9 ЧАСТЬ 3/3 — 100% ГОТОВ!")
 print("cat part1.py part2.py part3.py > app.py && git push = 🚀 ДЕПЛОЙ!")
+
 
 
 
