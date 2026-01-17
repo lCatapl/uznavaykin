@@ -43,6 +43,28 @@ bad_words_extended = [
     r'\b[её]буч[ие]\b', r'\bпидр[аил]\b', r'\bх[уи][йю]\b', r'\bпизд[ею]\b'
 ]
 
+# ✅ CSS v37.9 — ДОБАВЬ ЭТО В ЧАСТЬ 1/3!
+css_v37 = '''
+* {margin:0;padding:0;box-sizing:border-box;}
+body {font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;color:#2c3e50;}
+.container {max-width:1200px;margin:0 auto;padding:25px;background:white;border-radius:25px;box-shadow:0 25px 50px rgba(0,0,0,0.15);}
+header {text-align:center;padding:40px 20px;background:linear-gradient(135deg,#e74c3c,#c0392b);color:white;border-radius:20px;margin:-25px -25px 35px -25px;box-shadow:0 15px 35px rgba(231,76,60,0.4);}
+header h1 {font-size:2.8em;margin:0;font-weight:800;text-shadow:3px 3px 6px rgba(0,0,0,0.4);}
+.stat-card {background:#f8f9fa;padding:18px;margin:12px 0;border-radius:12px;border-left:5px solid;font-weight:600;transition:all 0.3s;}
+.stat-card:hover {transform:translateX(5px);box-shadow:0 5px 20px rgba(0,0,0,0.1);}
+.message {padding:15px 0;border-bottom:1px solid #eee;transition:all 0.2s;}
+.message:hover {background:#f8f9fa;}
+.chat-container {background:#f8f9fa;border-radius:20px;padding:30px;margin:30px 0;box-shadow:0 15px 40px rgba(0,0,0,0.12);}
+.nav {display:flex;flex-wrap:wrap;gap:15px;justify-content:center;margin:40px 0;}
+.nav-btn {padding:15px 30px;text-decoration:none;color:white;border-radius:30px;font-weight:700;font-size:16px;transition:all 0.3s;min-width:140px;text-align:center;}
+.nav-btn:hover {transform:translateY(-5px) scale(1.05);box-shadow:0 15px 35px rgba(0,0,0,0.25);}
+.leaderboard {background:#fff3cd;border:2px solid #ffeaa7;padding:25px;border-radius:15px;}
+.stats {background:#d1ecf1;border:2px solid #bee5eb;padding:25px;border-radius:15px;}
+#chat-messages {min-height:420px;overflow-y:auto;max-height:520px;padding:25px;background:white;border-radius:18px;border:2px solid #eee;box-shadow:inset 0 3px 15px rgba(0,0,0,0.08);}
+input, select, button {font-family:inherit;}
+@media (max-width:768px) {.container{padding:20px;margin:15px;}.nav{flex-direction:column;align-items:center;}.header h1{font-size:2em;}}
+'''
+
 def init_db():
     """✅ ПОЛНАЯ Инициализация SQLite v37.9"""
     conn = sqlite3.connect(DB_FILE, check_same_thread=False)
@@ -428,7 +450,7 @@ def index():
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🚀 УЗНАВАЙКИН v37.9 — Игровой хаб</title>
-    <style>{css}</style>
+    <style>{css_v37}</style>
 </head><body>
 <div class="container">
     <!-- ✅ HEADER -->
@@ -702,7 +724,7 @@ def admin_panel():
     
     conn.close()
     
-    return f'''<!DOCTYPE html><html><head><title>⚙️ Админка v37.9</title><style>{css}</style></head><body>
+    return f'''<!DOCTYPE html><html><head><title>⚙️ Админка v37.9</title><style>{css_v37}</style></head><body>
     <div class="container">
         <h1 style="text-align:center;color:#e74c3c;">⚙️ Админ-панель v37.9</h1>
         <div style="color:#27ae60;padding:15px;background:#d4edda;border:1px solid #c3e6cb;border-radius:8px;margin:20px 0;">{message}</div>
@@ -831,5 +853,6 @@ if __name__ == '__main__':
 
 print("🎉 УЖНАВАЙКИН v37.9 ЧАСТЬ 3/3 — 100% ГОТОВ!")
 print("cat part1.py part2.py part3.py > app.py && git push = 🚀 ДЕПЛОЙ!")
+
 
 
