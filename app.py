@@ -121,6 +121,13 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
+def get_user(username):
+    """✅ ПОЛУЧАЕТ ПОЛЬЗОВАТЕЛЯ как DICT"""
+    conn = get_db()
+    user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+    conn.close()
+    return dict(user) if user else None
+
 def save_user_activity(username):
     """Обновляет активность + онлайн-время"""
     conn = get_db()
@@ -445,16 +452,12 @@ async function deleteMsg(id) {{
 
 # ✅ ФУНКЦИИ ДЛЯ СООБЩЕНИЙ
 def get_recent_messages(limit=50):
-    """Последние сообщения с форматированием времени"""
     conn = get_db()
-    msgs = conn.execute('''SELECT c.*, u.color FROM chat c 
-                          JOIN users u ON c.user = u.username 
+    msgs = conn.execute('''SELECT c.*, u.color, strftime("%H:%M", c.time, "unixepoch") as time_str 
+                          FROM chat c JOIN users u ON c.user = u.username 
                           WHERE c.deleted = 0 ORDER BY c.time DESC LIMIT ?''', (limit,)).fetchall()
     conn.close()
-    
-    for msg in msgs:
-        msg['time_str'] = format_time(msg['time'])
-    return msgs[::-1]  # Новые сверху
+    return [dict(msg) for msg in msgs][::-1]  # Новые сверху + dict
 
 def format_time(timestamp):
     """Форматирует время как HH:MM"""
@@ -608,14 +611,12 @@ def api_delete_msg(msg_id):
     return jsonify({'ok': False})
 
 # ✅ АНОНСЫ
-def get_announcements(limit=5):
+def get_announcements(limit=50):
     conn = get_db()
-    anns = conn.execute('SELECT *, datetime(created_at, "Unixepoch") as time_str FROM announcements ORDER BY created_at DESC LIMIT ?', 
+    anns = conn.execute('SELECT *, strftime("%H:%M", created_at, "unixepoch") as time_str FROM announcements ORDER BY created_at DESC LIMIT ?', 
                        (limit,)).fetchall()
     conn.close()
-    for ann in anns:
-        ann['time_str'] = format_time(ann['created_at'])
-    return anns
+    return [dict(ann) for ann in anns]  # Конвертируем в dict!
 
 print("🚀 УЖНАВКИН v37.0 ЧАСТЬ 2/3 — ГЛАВНАЯ + ЧАТ + КАТАЛОГ!")
 print("✅ Готово! Скажи '3/3' для Магазин + Экономика + Админка!")
@@ -977,4 +978,5 @@ if __name__ == '__main__':
     print("👑 Админы: CatNap/Назар")
     print("✅ Все 9 пунктов выполнено!")
     app.run(host='0.0.0.0', port=port, debug=False)
+
 
