@@ -57,7 +57,6 @@ shop_items = {
 def get_timestamp():
     return time.time()
 
-# ✅ КРИТИЧЕСКИЕ ФУНКЦИИ СОХРАНЕНИЯ/ЗАГРУЗКИ v36.4
 def load_data():
     global users, user_roles, user_profiles, user_activity, user_stats, user_economy
     global user_inventory, chat_messages, mutes, catalog, announcements, notifications
@@ -67,10 +66,20 @@ def load_data():
         if os.path.exists(data_file):
             with open(data_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
+                # ✅ БЕЗОПАСНАЯ загрузка catalog
+                if 'catalog' in data and isinstance(data['catalog'], dict):
+                    catalog = data['catalog']
+                else:
+                    catalog = {'root': {'type': 'folder', 'created_by': 'system', 'created': time.time()}}
+                
                 for key, value in data.items():
-                    globals()[key] = value
+                    if key != 'catalog':  # catalog уже обработан
+                        globals()[key] = value
     except Exception as e:
         print(f"Ошибка загрузки: {e}")
+        # ✅ Критическая инициализация
+        catalog = {'root': {'type': 'folder', 'created_by': 'system', 'created': time.time()}}
+
 
 def save_data():
     """Сохранение ВСЕХ данных с оптимизацией"""
@@ -170,6 +179,23 @@ def setup_auto_admins():
     
     save_data()
     print("✅ SETUP_AUTO_ADMINS() ЗАВЕРШЕН — все данные готовы!")
+
+def safe_catalog_count():
+    """БЕЗОПАСНЫЙ подсчет файлов каталога"""
+    global catalog
+    
+    # ✅ ФИКС: Принудительная инициализация
+    if not catalog or not isinstance(catalog, dict) or 'root' not in catalog:
+        catalog = {'root': {'type': 'folder', 'created_by': 'system', 'created': time.time()}}
+    
+    try:
+        file_count = 0
+        for item_path, item_data in catalog.items():
+            if item_path != 'root' and isinstance(item_data, dict) and item_data.get('type') == 'file':
+                file_count += 1
+        return file_count
+    except:
+        return 0
 
 
 # ✅ ОСНОВНЫЕ ФУНКЦИИ v36.4
@@ -420,18 +446,17 @@ form button:hover {transform:translateY(-2px);box-shadow:0 8px 25px rgba(52,152,
 def index():
     current_user = session.get('user', '')
     
-    # ✅ Обработка сообщений
+    # ✅ Обработка сообщений (без изменений)
     if request.method == 'POST' and current_user and not is_muted(current_user):
         message = request.form['message'].strip()
         if message and len(message) <= 300:
-            
             if message.startswith('/admin ') and is_admin(current_user):
                 cmd = message[6:].strip().lower()
                 if cmd == 'stats':
                     stats = calculate_stats()
                     chat_messages.append({
                         'user': f'👑 {current_user}', 
-                        'text': f'📊 Онлайн: {stats["online"]}/{stats["total_users"]} | Сообщений: {len(chat_messages)}', 
+                        'text': f'📊 Онлайн: {stats["online"]}/{stats["total_users"]} | Файлов: {safe_catalog_count()}', 
                         'time': time.time()
                     })
                 save_data()
@@ -460,20 +485,19 @@ def index():
     stats = calculate_stats()
     top_wealth = get_top_leaderboard('wealth', 5)
     
-    # ✅ ФИКС: Правильный подсчет каталога
-    catalog_count = len([item for item in catalog if item != 'root' and catalog[item].get('type') == 'file'])
+    # ✅ ФИКС: БЕЗОПАСНЫЙ подсчет
+    catalog_count = safe_catalog_count()
     
     html = f'''<!DOCTYPE html>
-<html><head><title>🚀 Узнавайкин v36.5 ✅</title>
+<html><head><title>🚀 Узнавайкин v36.6 ✅</title>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <style>{css_v36_4}</style></head><body>
 <div class="container">
 <div class="header">
-<h1>🚀 УЖНАВКИН v36.5 ✅ ФИКС</h1>
+<h1>🚀 УЖНАВКИН v36.6 ✅ ФИКС</h1>
 <p>{get_role_display(current_user) if current_user else "👋 Гость"} | 🟢 {stats['online']}/{stats['total_users']} онлайн</p>
 </div>'''
 
-    # ✅ ИСПРАВЛЕННАЯ СТАТИСТИКА
     html += f'''<div class="stats">
 <div class="stat-card"><b>{stats['online']}</b><br>🟢 Онлайн</div>
 <div class="stat-card"><b>{len(chat_messages)}</b><br>💬 Сообщений</div>
@@ -485,10 +509,11 @@ def index():
     
     html += '</div>'
 
-    # Остальной код index() без изменений...
+    # ✅ Анонсы
     if announcements:
         html += f'<div class="announcement"><b>📢 {announcements[0]["admin"]}</b><br>{announcements[0]["message"]}</div>'
 
+    # ✅ Лидерборд
     html += '<div style="background:linear-gradient(135deg,#e3f2fd,#bbdefb);padding:30px;border-radius:20px;margin:25px 0;">'
     html += '<h3 style="margin-bottom:20px;">🥇 Топ богачей</h3>'
     if top_wealth:
@@ -497,12 +522,14 @@ def index():
             html += f'<div style="display:flex;justify-content:space-between;padding:15px;background:#fff;border-radius:12px;margin:8px 0;box-shadow:0 3px 15px rgba(0,0,0,0.1);"><span>{medal} {user}</span><span>{coins:,} 💰</span></div>'
     html += '</div>'
 
+    # ✅ Чат
     html += '<div class="chat-container"><div id="chat-messages">'
     for msg in reversed(chat_messages[-40:]):
         time_str = datetime.fromtimestamp(msg['time']).strftime('%H:%M')
         html += f'<div class="chat-msg"><b>{msg["user"]}</b> <span style="color:#888;float:right;">{time_str}</span><div style="clear:both;margin-top:8px;">{msg["text"]}</div></div>'
     html += '</div>'
 
+    # ✅ Чат инпут
     if current_user and not is_muted(current_user):
         html += f'''<form method="post" style="padding:30px;background:#ecf0f1;">
 <div style="display:flex;gap:15px;align-items:end;">
@@ -515,6 +542,7 @@ style="flex:1;padding:20px;border:2px solid #ddd;border-radius:15px;font-size:17
 
     html += '</div>'
 
+    # ✅ Навигация
     nav_items = [
         ('/profiles', '👥 Профили', '#3498db'),
         ('/shop', '🛒 Магазин', '#9b59b6'),
@@ -530,7 +558,7 @@ style="flex:1;padding:20px;border:2px solid #ddd;border-radius:15px;font-size:17
             nav_items.append(('/admin', '🔧 Админка (ВСЁ)', '#e74c3c'))
         elif is_moderator(current_user):
             nav_items.append(('/moderator', '🛡️ Модератор', '#27ae60'))
-        nav_items.append(('/logout', '🚪 Выход', '#95a5a6'))
+        nav_items.append(('/logout', '🚪 Выход', '#95a6a6'))
     else:
         nav_items.append(('/login', '🔐 Войти', '#e74c3c'))
 
@@ -540,6 +568,7 @@ style="flex:1;padding:20px;border:2px solid #ddd;border-radius:15px;font-size:17
     html += '</div></div></body></html>'
     
     return html
+
 
 
 # ✅ ЛОГИН/РЕГИСТРАЦИЯ
@@ -830,4 +859,5 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     print("🚀 УЖНАВКИН v36.4 запущен! Авто-админы: CatNap, Назар")
     app.run(host='0.0.0.0', port=port, debug=False)
+
 
