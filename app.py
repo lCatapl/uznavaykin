@@ -470,8 +470,17 @@ def profile():
     user_data = conn.execute('SELECT * FROM users WHERE username = ?', (current_user,)).fetchone()
     conn.close()
     
+    # ✅ ИСПРАВЛЕНИЕ: role_class вычисляем заранее
+    role_class = {
+        "admin": "rank-admin",
+        "moderator": "rank-mod", 
+        "premium": "rank-premium",
+        "vip": "rank-vip",
+        "start": "rank-start"
+    }.get(user_data["role"] if user_data else "start", "rank-start")
+    
     html = f'''<!DOCTYPE html><html><head>
-    <title>👤 Профиль {current_user} — УЗНАВАЙКИН</title>
+    <title>👤 Профиль {current_user} — УЖНАВАЙКИН</title>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>{css}</style></head><body>
     <div class="container" style="max-width:900px;">
@@ -492,7 +501,7 @@ def profile():
                 <h3 style="color:#2c3e50;margin-bottom:25px;">📊 Активность</h3>
                 <div class="stat-card" style="border-left-color:#9b59b6;font-size:1.3em;">💬 Сообщений: <b style="color:#9b59b6;">{stats.get("messages", 0)}</b></div>
                 <div class="stat-card" style="border-left-color:#e67e22;font-size:1.3em;">🎖️ Звание WoT: <b style="color:#e67e22;">{user_data["tank_rank"] if user_data else "Рядовой"}</b></div>
-                <div class="stat-card" style="border-left-color:#1abc9c;font-size:1.3em;">👥 Роль: <span class="{"admin":"rank-admin","moderator":"rank-mod","premium":"rank-premium","vip":"rank-vip","start":"rank-start"}.get({user_data["role"] if user_data else "start"}, "rank-start")}">{user_data["role"] if user_data else "start"}</span></div>
+                <div class="stat-card" style="border-left-color:#1abc9c;font-size:1.3em;">👥 Роль: <span class="{role_class}">{user_data["role"] if user_data else "start"}</span></div>
             </div>
         </div>
         
@@ -793,3 +802,4 @@ if __name__ == '__main__':
     print("✅ Админы: CatNap/Назар | Автомодерация 100+ матов")
     print(f"🌐 Сервер: http://localhost:{port}")
     app.run(host='0.0.0.0', port=port, debug=False)
+
