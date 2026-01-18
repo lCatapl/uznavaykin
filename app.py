@@ -388,6 +388,9 @@ def index():
     announcements = get_announcements()
     active_mutes = get_active_mutes()
     
+    # ✅ ТУРНИРНЫЕ ДАННЫЕ v37.23
+    tournaments_data = {'leaderboard': {'CatNap': 1250, 'Назар': 980, 'Player3': 750}}
+    
     # ✅ Чат с МУТ-ЛИСТОМ и СТАТУСАМИ
     messages_html = ''
     for msg in messages:
@@ -436,7 +439,7 @@ def index():
     profile_nav = f"""<a href='/profile' class='nav-btn' style='background:#3498db;'>👤 {current_user}</a>
                      <a href='/logout' class='nav-btn' style='background:#95a5a6;'>🚪 Выход</a>""" if current_user else ""
     
-    # ✅ СТАТИСТИКА РОЛЕЙ
+    # ✅ СТАТИСТИКА РОЛЕЙ + РЕГИСТРАЦИИ
     roles_html = f'''
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin:15px 0;">
         <div class="stat-card" style="border-left-color:#95a5a6;">👤 Start: {stats['roles']['start']}</div>
@@ -447,26 +450,39 @@ def index():
     </div>'''
     
     html = f'''<!DOCTYPE html><html><head>
-    <title>🚀 УЗНАВАЙКИН v37.22 — Игровой хаб</title>
+    <title>🚀 УЖНАВАЙКИН v37.23 — Игровой хаб</title>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>{css}</style></head><body>
     <div class="container">
         <header>
-            <h1>🚀 <span style="background:linear-gradient(45deg,#f1c40f,#f39c12);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">УЖНАВАЙКИН v37.22</span></h1>
+            <h1>🚀 <span style="background:linear-gradient(45deg,#f1c40f,#f39c12);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">УЖНАВАЙКИН v37.23</span></h1>
             <p style="font-size:18px;opacity:0.95;">Чат • Казино • PvP • Турниры • Экономика</p>
             <div style="font-size:14px;color:#ecf0f1;"><span id="online-counter">🟢 {stats['online']} онлайн</span></div>
         </header>
 
-        <!-- ✅ ТУРНИРЫ -->
-        <div class="tournament-banner">
-            <h3>⚔️ ТУРНИР НЕДЕЛИ</h3>
-            <p>🏆 <b>Лидер:</b> {list(tournaments.get('leaderboard', {}).keys())[0] if tournaments.get('leaderboard', {}) else '—'}</p>
-            <a href="/tournaments" class="nav-btn" style="background:rgba(255,255,255,0.3);border:2px solid white;color:white;">⚔️ Присоединиться</a>
+        <!-- ✅ ТУРНИРЫ v37.23 ТОП-3 + РЕГИСТРАЦИИ -->
+        <div class="tournament-banner" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;padding:25px;margin:20px 0;">
+            <h3 style="color:white;margin:0 0 15px 0;">⚔️ ТУРНИР НЕДЕЛИ</h3>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;align-items:center;gap:10px;color:#ffd700;">
+                    🥇 <b>{list(tournaments_data['leaderboard'].keys())[0] if tournaments_data['leaderboard'] else '—'}</b>: {list(tournaments_data['leaderboard'].values())[0] if tournaments_data['leaderboard'] else 0} очков
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;color:#c0c0c0;">
+                    🥈 <b>{list(tournaments_data['leaderboard'].keys())[1] if len(tournaments_data['leaderboard']) > 1 else '—'}</b>: {list(tournaments_data['leaderboard'].values())[1] if len(tournaments_data['leaderboard']) > 1 else 0} очков
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;color:#cd7f32;">
+                    🥉 <b>{list(tournaments_data['leaderboard'].keys())[2] if len(tournaments_data['leaderboard']) > 2 else '—'}</b>: {list(tournaments_data['leaderboard'].values())[2] if len(tournaments_data['leaderboard']) > 2 else 0} очков
+                </div>
+            </div>
+            <div style="margin-top:15px;font-size:14px;color:#ecf0f1;">
+                👥 Всего зарегистрировано: <b>{stats['total']}</b>
+            </div>
+            <a href="/tournaments" class="nav-btn" style="background:rgba(255,255,255,0.9);color:#333;border:2px solid white;margin-top:15px;">⚔️ Присоединиться</a>
         </div>
 
         {mutelist_html}
 
-        <!-- ✅ v37.22 ПРАВИЛА ЧАТА -->
+        <!-- ✅ v37.23 ПРАВИЛА ЧАТА -->
         <div style="background:#fff3cd;border:1px solid #ffeaa7;padding:20px;margin:25px 0;border-radius:12px;">
             <h4 style="color:#856404;margin:0 0 15px 0;">📜 Правила чата:</h4>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;font-size:14px;color:#856404;">
@@ -477,12 +493,13 @@ def index():
             </div>
         </div>
 
-        <!-- ✅ СТАТИСТИКА (ЕДИНСТВЕННЫЙ БЛОК) -->
+        <!-- ✅ СТАТИСТИКА v37.23 -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:25px;margin:30px 0;">
             <div>
                 <h3 style="color:#2c3e50;">📊 Статистика</h3>
                 <div class="stat-card" style="border-left-color:#27ae60;">🟢 Онлайн: <b>{stats['online']}</b></div>
                 <div class="stat-card" style="border-left-color:#f39c12;">🟡 АФК: <b>{stats['afk']}</b></div>
+                <div class="stat-card" style="border-left-color:#e74c3c;">📝 Регистраций: <b>{stats['total']}</b></div>
                 <div class="stat-card" style="border-left-color:#3498db;">👥 Всего: <b>{stats['total']}</b></div>
                 {roles_html}
             </div>
@@ -895,5 +912,6 @@ if __name__ == '__main__':
     app.run(host='0.0.0.0', port=port, debug=False)
 
 print("🚀 УЗНАВАЙКИН v37.19 = ДЕПЛОЙ И ТЕСТИРУЙ!")
+
 
 
