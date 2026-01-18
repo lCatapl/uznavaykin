@@ -257,11 +257,60 @@ def get_announcements(limit=3):
 
 def auto_moderate_v37(message, user):
     message_lower = message.lower()
-    bad_words = [r'\bсук[аиы]\b', r'\bпизд[ауео][а-я]*\b', r'\bху[йя]\b', r'\bпидор[аы]?\b']
-    for pattern in bad_words:
+    
+    # ✅ МАКСИМАЛЬНЫЙ СПИСОК МАТА (100+ слов)
+    bad_words_extended = [
+        # Основные
+        r'\bсук[аиы]\b', r'\bпизд[ауео][нц][а-я]*\b', r'\bху[йя]\b', r'\bпидор[аы]?\b', r'\bбляд[ьюи]\b',
+        r'\bп[еи]д[оа][рс]?\b', r'\b[её]б[а-я][нл][а-я]*\b', r'\bмуд[а-я][кх]?\b', r'\bжоп[ау]\b',
+        r'\bп[еи]з[дг][ауе]\b', r'\bбля[дт][ка]\b', r'\bх[уы]й[нл][а-я]*\b',
+        
+        # Трупные
+        r'\bтвар[ьюи]\b', r'\bтварь\b', r'\bмраз[ьюи]\b', r'\bмразь\b', r'\bублюд[ок]\b',
+        r'\bшлюх[ау]\b', r'\bшалава\b', r'\bпроститут[ка]\b', r'\bблядина\b',
+        
+        # Сексуальные
+        r'\bсиськ[ау]\b', r'\bтитьк[ау]\b', r'\bчлен[ау]\b', r'\bхуи[нс]\b', r'\bяйц[ау]\b',
+        r'\bотсос\b', r'\bминет\b', r'\bтрах[ае]\b', r'\bеб[ае]\b', r'\bдроч[иау]\b',
+        
+        # Национальные
+        r'\bчурк[ау]\b', r'\bчурка\b', r'\bхач[ау]\b', r'\bхач\b', r'\bжид[ау]\b',
+        r'\bнем[еёц]\b', r'\bнемец\b', r'\b[чп]идор[аы]\b', r'\b[чп]ох[ау]\b',
+        
+        # Клоака
+        r'\bперд[её]\b', r'\bср[аа]ч\b', r'\bдерьм[оау]\b', r'\bговн[оау]\b',
+        r'\bпидр[ау]\b', r'\bп[еи]дор[ау]\b', r'\bп[еи]д[оа][рс]\b',
+        
+        # Вариации
+        r'\bбл[яь][дт][ка]\b', r'\bп[иы]зд[еу][цн][ка]\b', r'\bх[уы][йе]\b', r'\bп[еи]д[оа][рс]\b',
+        r'\b[её]б[ту][нл][а-я]*\b', r'\bм[уо]д[оа][кх]к?[ау]\b', r'\bж[оа][пн]у\b'
+    ]
+    
+    # ✅ Проверка МАТА = 15 мин
+    for pattern in bad_words_extended:
         if re.search(pattern, message_lower, re.IGNORECASE):
             return "🚫 Мат запрещен!", "mat", 15*60
+    
+    # ✅ СПАМ: >3 сообщений подряд = 10 мин  
+    recent = [m['message'].lower() for m in list(chat_messages)[-10:] if m['user'] == user]
+    if len(recent) >= 4:
+        return "🚫 Спам (>3 сообщений)!", "spam", 10*60
+    
+    # ✅ ФЛУД=РЕКЛАМА: ссылки/реклама = 30 мин
+    flood_patterns = [
+        r'http[s]?://', r'www\.', r'\.ru\b', r'\.com\b', r'\.net\b', r'\.org\b',
+        r'discord\.gg', r't\.me', r'telegram\.me', r'vk\.com', r'v[kк]\.com',
+        r'youtube\.com', r'youtu\.be', r'twitch\.tv', r'\bst[ea]m\b',
+        r'\bски[нн]д[ау]\b', r'\bскин\b', r'\bдон[аа]т\b', r'\bп[рр]омокод\b',
+        r'\bкуп[иь]\b.{0,10}руб[ляь]\b', r'\bбесплат[нно]\b.{0,10}скин[ау]\b'
+    ]
+    
+    for pattern in flood_patterns:
+        if re.search(pattern, message_lower, re.IGNORECASE):
+            return "🚫 Реклама запрещена!", "flood", 30*60
+    
     return None, None, 0
+
 
 def save_data():
     conn = get_db()
@@ -398,12 +447,12 @@ def index():
     </div>'''
     
     html = f'''<!DOCTYPE html><html><head>
-    <title>🚀 УЗНАВАЙКИН v37.19 — Игровой хаб</title>
+    <title>🚀 УЗНАВАЙКИН v37.22 — Игровой хаб</title>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>{css}</style></head><body>
     <div class="container">
         <header>
-            <h1>🚀 <span style="background:linear-gradient(45deg,#f1c40f,#f39c12);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">УЖНАВАЙКИН v37.19</span></h1>
+            <h1>🚀 <span style="background:linear-gradient(45deg,#f1c40f,#f39c12);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">УЖНАВАЙКИН v37.22</span></h1>
             <p style="font-size:18px;opacity:0.95;">Чат • Казино • PvP • Турниры • Экономика</p>
             <div style="font-size:14px;color:#ecf0f1;"><span id="online-counter">🟢 {stats['online']} онлайн</span></div>
         </header>
@@ -417,6 +466,18 @@ def index():
 
         {mutelist_html}
 
+        <!-- ✅ v37.22 ПРАВИЛА ЧАТА -->
+        <div style="background:#fff3cd;border:1px solid #ffeaa7;padding:20px;margin:25px 0;border-radius:12px;">
+            <h4 style="color:#856404;margin:0 0 15px 0;">📜 Правила чата:</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;font-size:14px;color:#856404;">
+                <div>• 🔞 <b>Мат (100+ слов)</b> = <span style="color:#e74c3c;">15 мин</span></div>
+                <div>• 📨 <b>Спам (>3 сообщений)</b> = <span style="color:#e74c3c;">10 мин</span></div>
+                <div>• 🚫 <b>Флуд/Реклама</b> = <span style="color:#e74c3c;">30 мин</span></div>
+                <div>• 🛡️ <b>Модераторы</b> удаляют нарушения</div>
+            </div>
+        </div>
+
+        <!-- ✅ СТАТИСТИКА (ЕДИНСТВЕННЫЙ БЛОК) -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:25px;margin:30px 0;">
             <div>
                 <h3 style="color:#2c3e50;">📊 Статистика</h3>
@@ -834,3 +895,4 @@ if __name__ == '__main__':
     app.run(host='0.0.0.0', port=port, debug=False)
 
 print("🚀 УЗНАВАЙКИН v37.19 = ДЕПЛОЙ И ТЕСТИРУЙ!")
+
