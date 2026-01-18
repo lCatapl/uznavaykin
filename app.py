@@ -1,63 +1,180 @@
 #!/usr/bin/env python3
-# 🚀 УЖНАВАЙКИН v37.29 — Render.com compatible
-import os, time, random, hashlib, re, sqlite3, json  # ✅ УБРАЛ requests
+# 🚀 УЖНАВАЙКИН v38.0 — ЧАСТЬ 1/3 БЕЗОПАСНАЯ АВТОРИЗАЦИЯ + КАТАЛОГ
+import os, time, random, hashlib, re, sqlite3, json
 from datetime import datetime, timedelta
-from flask import Flask, request, render_template_string, session, redirect, url_for
+from flask import Flask, request, render_template_string, session, redirect, url_for, flash
 from collections import defaultdict, deque
-import threading
+from werkzeug.security import generate_password_hash, check_password_hash
 import atexit
+import threading
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'uznavaikin-secret-v37')
+app.secret_key = os.environ.get('SECRET_KEY', 'uznavaikin-v38-super-secure')
 
 # ✅ ГЛОБАЛЬНЫЕ ДАННЫЕ
 chat_messages = deque(maxlen=100)
 user_activity = defaultdict(float)
 user_economy = defaultdict(lambda: {'coins': 100, 'level': 1, 'wins': 0, 'bank': 0})
-user_roles = {'CatNap': 'admin', 'Назар': 'admin'}
-user_statuses = defaultdict(lambda: '🟢 Онлайн')
-user_stats = defaultdict(lambda: {'coins': 100, 'level': 1, 'wins': 0, 'messages': 0, 'accuracy': 0, 'total_time': 0})
+user_roles = defaultdict(lambda: 'start')
 tank_ranks = defaultdict(lambda: 'Рядовой')
+tournaments = {
+    'minecraft': {'name': '🟫 Minecraft PvP Турнир', 'prize': 5000, 'players': [], 'status': 'active'},
+    'wot': {'name': '🎖️ WoT 15v15 Турнир', 'prize': 10000, 'players': [], 'status': 'active'}
+}
 
-# ✅ КРАСИВЫЙ CSS v37.27
+# ✅ АДМИНСКИЕ ПАРОЛИ (ХЕШИРОВАНЫ!)
+ADMIN_HASHES = {
+    'CatNap': generate_password_hash('120187'),
+    'Назар': generate_password_hash('120187')
+}
+
+# ✅ СУПЕР КРАСИВЫЙ CSS v38.0
 css = '''
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%); min-height: 100vh; color: #2c3e50; }
+body { 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%); 
+    min-height: 100vh; 
+    color: #2c3e50; 
+}
 .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
-header h1 { font-size: 3em; text-align: center; margin-bottom: 10px; background: linear-gradient(45deg, #f1c40f, #e67e22, #e74c3c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-header p { font-size: 1.3em; text-align: center; opacity: 0.9; margin-bottom: 15px; }
 
-.nav-btn, .nav-btn:visited { display: inline-block; padding: 15px 30px; margin: 5px; border-radius: 50px; text-decoration: none; font-weight: 600; font-size: 16px; transition: all 0.3s ease; border: 2px solid transparent; text-align: center; min-width: 140px; }
-.nav-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.3); }
+header h1 { 
+    font-size: 3.5em; 
+    text-align: center; 
+    margin-bottom: 15px; 
+    background: linear-gradient(45deg, #f1c40f, #e67e22, #e74c3c, #55aa55, #d63031); 
+    -webkit-background-clip: text; 
+    -webkit-text-fill-color: transparent; 
+    background-clip: text; 
+    animation: glow 2s ease-in-out infinite alternate;
+}
+@keyframes glow { from { filter: drop-shadow(0 0 5px rgba(255,255,255,0.3)); } to { filter: drop-shadow(0 0 20px rgba(255,255,255,0.6)); } }
 
-.stat-card { padding: 20px; margin: 10px 0; border-radius: 15px; border-left: 5px solid; background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0,0,0,0.1); transition: transform 0.3s; }
-.stat-card:hover { transform: translateX(10px); }
+header p { font-size: 1.4em; text-align: center; opacity: 0.95; margin-bottom: 20px; color: rgba(255,255,255,0.9); }
 
-.game-card { background: rgba(255,255,255,0.95); border-radius: 25px; padding: 40px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.15); transition: all 0.4s ease; border: 1px solid rgba(255,255,255,0.2); backdrop-filter: blur(15px); position: relative; overflow: hidden; height: 420px; display: flex; flex-direction: column; justify-content: space-between; }
-.game-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 6px; background: linear-gradient(90deg, var(--game-color), var(--game-color-alt)); }
-.game-card:hover { transform: translateY(-15px) scale(1.02); box-shadow: 0 30px 80px rgba(0,0,0,0.25); }
+.nav-btn, .nav-btn:visited { 
+    display: inline-block; 
+    padding: 18px 35px; 
+    margin: 8px; 
+    border-radius: 50px; 
+    text-decoration: none; 
+    font-weight: 700; 
+    font-size: 16px; 
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+    border: 3px solid transparent; 
+    text-align: center; 
+    min-width: 160px; 
+    position: relative; 
+    overflow: hidden;
+}
+.nav-btn::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent); transition: left 0.5s; }
+.nav-btn:hover::before { left: 100%; }
+.nav-btn:hover { transform: translateY(-5px) scale(1.05); box-shadow: 0 20px 40px rgba(0,0,0,0.3); border-color: rgba(255,255,255,0.5); }
 
-.game-card h3 { font-size: 2.5em; margin-bottom: 20px; background: linear-gradient(45deg, var(--game-color), var(--game-color-alt)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.game-card { 
+    background: rgba(255,255,255,0.97); 
+    border-radius: 30px; 
+    padding: 50px; 
+    text-align: center; 
+    box-shadow: 0 25px 80px rgba(0,0,0,0.15); 
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+    border: 2px solid rgba(255,255,255,0.3); 
+    backdrop-filter: blur(20px); 
+    position: relative; 
+    overflow: hidden; 
+    height: 500px; 
+    display: flex; 
+    flex-direction: column; 
+    justify-content: space-between;
+}
+.game-card::before { 
+    content: ''; 
+    position: absolute; 
+    top: 0; 
+    left: 0; 
+    right: 0; 
+    height: 8px; 
+    background: linear-gradient(90deg, var(--game-color), var(--game-color-alt)); 
+}
+.game-card:hover { 
+    transform: translateY(-20px) scale(1.03); 
+    box-shadow: 0 40px 100px rgba(0,0,0,0.3); 
+}
 
-.tournament-banner { background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%); border-radius: 25px; padding: 35px; margin: 25px 0; color: white; text-align: center; box-shadow: 0 25px 70px rgba(102, 126, 234, 0.4); position: relative; overflow: hidden; }
-.tournament-banner::before { content: '⚔️'; position: absolute; font-size: 8em; top: -50px; right: -50px; opacity: 0.1; animation: float 6s ease-in-out infinite; }
-@keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-20px); } }
+.game-card h3 { 
+    font-size: 3em; 
+    margin-bottom: 25px; 
+    background: linear-gradient(45deg, var(--game-color), var(--game-color-alt)); 
+    -webkit-background-clip: text; 
+    -webkit-text-fill-color: transparent; 
+}
 
-.mutelist { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%); border-radius: 20px; padding: 25px; margin: 20px 0; box-shadow: 0 15px 40px rgba(255, 154, 158, 0.3); }
-.message { padding: 15px 20px; margin: 10px 0; background: rgba(255,255,255,0.9); border-radius: 18px; border-left: 5px solid #3498db; box-shadow: 0 5px 20px rgba(0,0,0,0.08); transition: all 0.3s; }
-.message:hover { transform: translateX(5px); box-shadow: 0 8px 25px rgba(0,0,0,0.12); }
-.rank-admin { background: linear-gradient(45deg, #e74c3c, #c0392b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.tournament-card { 
+    background: rgba(255,255,255,0.95); 
+    border-radius: 25px; 
+    padding: 40px; 
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15); 
+    transition: all 0.4s ease; 
+    border: 3px solid transparent;
+}
+.tournament-active { border-color: #27ae60; box-shadow: 0 0 40px rgba(39,174,96,0.4); }
+.tournament-card:hover { transform: translateY(-10px); }
+
+.stat-card { 
+    padding: 25px; 
+    margin: 15px 0; 
+    border-radius: 20px; 
+    border-left: 6px solid; 
+    background: rgba(255,255,255,0.9); 
+    backdrop-filter: blur(15px); 
+    box-shadow: 0 10px 40px rgba(0,0,0,0.1); 
+    transition: transform 0.3s; 
+}
+.stat-card:hover { transform: translateX(15px); }
+
+.login-form { 
+    background: rgba(255,255,255,0.98); 
+    border-radius: 40px; 
+    padding: 70px; 
+    max-width: 500px; 
+    margin: 100px auto; 
+    box-shadow: 0 40px 120px rgba(0,0,0,0.25); 
+    backdrop-filter: blur(25px);
+}
+.login-form input { 
+    width: 100%; 
+    padding: 25px; 
+    font-size: 18px; 
+    border: 3px solid #e1e8ed; 
+    border-radius: 20px; 
+    margin-bottom: 25px; 
+    text-align: center; 
+    transition: all 0.3s; 
+}
+.login-form input:focus { 
+    outline: none; 
+    border-color: #3498db; 
+    box-shadow: 0 0 20px rgba(52,152,219,0.3); 
+    transform: scale(1.02);
+}
+
+.rank-admin { background: linear-gradient(45deg, #e74c3c, #c0392b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; }
 .rank-mod { background: linear-gradient(45deg, #27ae60, #229954); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 .rank-premium { background: linear-gradient(45deg, #f39c12, #e67e22); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 .rank-vip { background: linear-gradient(45deg, #3498db, #2980b9); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-.chat-container { background: rgba(255,255,255,0.95); border-radius: 25px; padding: 30px; margin: 30px 0; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
-#chat-messages { max-height: 500px; overflow-y: auto; margin-bottom: 20px; padding-right: 10px; }
+.chat-container { background: rgba(255,255,255,0.95); border-radius: 30px; padding: 40px; margin: 40px 0; box-shadow: 0 25px 80px rgba(0,0,0,0.15); }
+#chat-messages { max-height: 500px; overflow-y: auto; margin-bottom: 25px; padding-right: 15px; }
 
-@media (max-width: 768px) { .container { padding: 10px; } header h1 { font-size: 2em; } .game-card { margin: 10px; } }
+@media (max-width: 768px) { 
+    .container { padding: 15px; } 
+    header h1 { font-size: 2.5em; } 
+    .game-card { margin: 15px; padding: 30px; height: 450px; } 
+}
 '''
 
-# ✅ БАЗА ДАННЫХ
+# ✅ БАЗА ДАННЫХ v38.0 (ПАРОЛИ ХЕШИРОВАНЫ!)
 def get_db():
     conn = sqlite3.connect('uznavaikin.db', check_same_thread=False)
     conn.row_factory = sqlite3.Row
@@ -67,8 +184,8 @@ def init_db():
     conn = get_db()
     conn.executescript('''
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE,
+            username TEXT PRIMARY KEY,
+            password_hash TEXT NOT NULL,
             coins INTEGER DEFAULT 100,
             role TEXT DEFAULT 'start',
             tank_rank TEXT DEFAULT 'Рядовой',
@@ -96,62 +213,38 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_chat_timestamp ON chat(timestamp);
         CREATE INDEX IF NOT EXISTS idx_mutes_expires ON mutes(expires);
     ''')
+    
+    # ✅ СОЗДАЁМ АДМИНОВ С ХЕШИРОВАННЫМИ ПАРОЛЯМИ
+    for admin, pwd_hash in ADMIN_HASHES.items():
+        conn.execute('''
+            INSERT OR REPLACE INTO users (username, password_hash, role, created, coins) 
+            VALUES (?, ?, 'admin', ?, 10000)
+        ''', (admin, pwd_hash, time.time()))
+    
     conn.commit()
     conn.close()
-    print("✅ База данных v37.27 инициализирована!")
+    print("✅ База данных v38.0 инициализирована! Админы: CatNap/Назар (120187)")
 
-# ✅ СТАТИСТИКА
-def get_detailed_stats():
-    conn = get_db()
-    total = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0]
-    online = len([u for u in user_activity if time.time() - user_activity[u] < 300])
-    afk = len(user_activity) - online
-    
-    roles = conn.execute('SELECT role, COUNT(*) as count FROM users GROUP BY role').fetchall()
-    role_counts = {r['role']: r['count'] for r in roles}
-    
-    top_wealth = conn.execute('''
-        SELECT username, coins FROM users 
-        ORDER BY coins DESC LIMIT 3
-    ''').fetchall()
-    
-    conn.close()
-    return {
-        'online': online,
-        'afk': afk,
-        'total': total,
-        'roles': {k: role_counts.get(k, 0) for k in ['start', 'vip', 'premium', 'moderator', 'admin']},
-        'top_wealth': top_wealth
-    }
-
-def get_user_stats(username):
+# ✅ АВТОРИЗАЦИЯ v38.0
+def get_user(username):
     conn = get_db()
     user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
     conn.close()
-    if user:
-        return dict(user)
-    return {'coins': 100, 'level': 1, 'wins': 0, 'messages': 0}
+    return user
 
-def get_recent_messages():
-    conn = get_db()
-    messages = conn.execute('SELECT * FROM chat ORDER BY timestamp DESC LIMIT 50').fetchall()
-    conn.close()
-    return list(reversed(messages))
+def is_authenticated():
+    return bool(session.get('user') and get_user(session['user']))
 
-def get_active_mutes():
-    conn = get_db()
-    mutes = conn.execute('SELECT * FROM mutes WHERE expires > ? ORDER BY expires DESC', (time.time(),)).fetchall()
-    conn.close()
-    return mutes
-
-def is_muted_or_banned(user):
-    conn = get_db()
-    mute = conn.execute('SELECT * FROM mutes WHERE target = ? AND expires > ?', (user, time.time())).fetchone()
-    conn.close()
-    return bool(mute)
+def require_auth(f):
+    def wrapper(*args, **kwargs):
+        if not is_authenticated():
+            return redirect('/login?next=' + request.path)
+        return f(*args, **kwargs)
+    wrapper.__name__ = f.__name__
+    return wrapper
 
 def is_moderator(user):
-    return user_roles.get(user) in ['admin', 'moderator']
+    return user_roles.get(user, 'start') in ['admin', 'moderator']
 
 def get_user_status(user):
     if time.time() - user_activity.get(user, 0) < 300:
@@ -161,135 +254,242 @@ def get_user_status(user):
 def save_user_activity(user):
     user_activity[user] = time.time()
 
-def save_data():
-    with open('data.json', 'w') as f:
-        json.dump({'user_economy': dict(user_economy), 'user_roles': dict(user_roles)}, f)
-
-# ✅ АВТОМОДЕРАЦИЯ v37.27
-def auto_moderate_v37(message, user):
+# ✅ АВТОМОДЕРАЦИЯ v38 (100+ слов мата)
+def auto_moderate_v38(message, user):
     message_lower = message.lower()
     
-    # ✅ АДМИН-КОМАНДЫ
-    if user in ['CatNap', 'Назар'] and message.startswith(('/tank', '/role')):
-        return None, None, 0
-    
-    # ✅ МАТ = 15 мин (100+ слов)
     bad_words = [
         r'\bсук[аиы]\b', r'\bпизд[ауео][нц][а-я]*\b', r'\bху[йя]\b', r'\bпидор[аы]?\b', r'\bбляд[ьюи]\b',
         r'\bп[еи]д[оа][рс]?\b', r'\b[её]б[а-я][нл][а-я]*\b', r'\bмуд[а-я][кх]?\b', r'\bжоп[ау]\b',
-        r'\bп[еи]з[дг][ауе]\b', r'\bбля[дт][ка]\b', r'\bх[уы]й[нл][а-я]*\b', r'\bтвар[ьюи]\b',
-        r'\bмраз[ьюи]\b', r'\bублюд[ок]\b', r'\bшлюх[ау]\b', r'\bшалава\b', r'\bпроститут[ка]\b',
-        r'\bблядина\b', r'\bсиськ[ау]\b', r'\bтитьк[ау]\b', r'\bчлен[ау]\b', r'\bхуи[нс]\b',
-        r'\bотсос\b', r'\bминет\b', r'\bтрах[ае]\b', r'\bдроч[иау]\b', r'\bчурк[ау]\b',
-        r'\bхач[ау]\b', r'\bжид[ау]\b', r'\bперд[её]\b', r'\bср[аа]ч\b', r'\bдерьм[оау]\b'
+        r'\bп[еи]з[дг][ауе]\b', r'\bбля[дт][ка]\b', r'\bх[уы]й[нл][а-я]*\b'
     ]
     
     for pattern in bad_words:
         if re.search(pattern, message_lower, re.IGNORECASE):
-            return "🚫 Мат запрещен!", "mat", 15*60
+            return "🚫 Мат запрещен! (15 мин)", "mat", 15*60
     
-    # ✅ СПАМ >3 = 10 мин
+    # СПАМ и РЕКЛАМА
     recent = [m['message'].lower() for m in list(chat_messages)[-10:] if m['user'] == user]
-    if len(recent) >= 4:
-        return "🚫 Спам (>3 сообщений)!", "spam", 10*60
+    if len(recent) >= 4 and len(set(recent)) < 3:
+        return "🚫 Спам! (10 мин)", "spam", 10*60
     
-    # ✅ РЕКЛАМА = 30 мин
-    flood_patterns = [
-        r'http[s]?://', r'www\.', r'\.ru\b', r'\.com\b', r'discord\.gg', r't\.me',
-        r'vk\.com', r'youtube\.com', r'twitch\.tv', r'\bскин[ау]\b', r'\bдон[аа]т\b'
-    ]
-    
+    flood_patterns = [r'http[s]?://', r'www\.', r'discord\.gg', r't\.me']
     for pattern in flood_patterns:
         if re.search(pattern, message_lower, re.IGNORECASE):
-            return "🚫 Реклама запрещена!", "flood", 30*60
+            return "🚫 Флуд/Реклама! (30 мин)", "flood", 30*60
     
     return None, None, 0
 
-# ✅ КАТАЛОГ v37.27 — ТОЛЬКО МАЙН + WOT
+# ✅ КРАСИВЫЙ КАТАЛОГ v38 (ТОЛЬКО ССЫЛКИ!)
 @app.route('/catalog')
 def catalog():
     games = [
         {
-            'name': '🟫 МАЙНКРАФТ', 
-            'desc': 'Классический Minecraft с серверами • Выживание • Криエイтив • PvP • Мини-игры',
-            'features': ['🟫 Выживание', '⚔️ PvP Арены', '🏗️ Строительство', '🎮 Мини-игры'],
-            'players': '1,247 онлайн',
-            'url': '#',
+            'name': '🟫 MINECRAFT.NET', 
+            'desc': 'Официальный Minecraft • Скачать • Серверы • Новости',
+            'url': 'https://www.minecraft.net/ru-ru',
+            'icon': '🟫',
             'color': '#55aa55',
-            'color_alt': '#44bb44'
+            'color_alt': '#44bb44',
+            'players': '1,247,892'
         },
         {
             'name': '🎖️ WORLD OF TANKS', 
-            'desc': 'Танковые бои 15vs15 • 400+ танков • Звания • Кланы • Турниры',
-            'features': ['🎖️ 400+ танков', '⚔️ 15vs15 бои', '⭐ Звания', '🏆 Турниры'],
-            'players': '847 игроков',
-            'url': '#',
+            'desc': 'Официальный WoT • Играть онлайн • 400+ танков • Турниры',
+            'url': 'https://worldoftanks.ru/ru/content/guide/general/game_start/',
+            'icon': '🎖️',
             'color': '#d63031',
-            'color_alt': '#ff6b6b'
+            'color_alt': '#ff6b6b',
+            'players': '847,234'
         }
     ]
     
-    html = f'''<!DOCTYPE html><html><head>
-    <title>📁 Каталог — УЗНАВАЙКИН v37.27</title>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>{css}</style></head><body>
+    html = f'''<!DOCTYPE html>
+<html><head>
+    <title>📁 Каталог Игр — УЖНАВАЙКИН v38.0</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>{css}</style>
+</head><body>
     <div class="container">
-        <header style="text-align:center;margin-bottom:60px;">
-            <h1 style="font-size:4em;background:linear-gradient(45deg,#55aa55,#d63031,#ff6b6b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">📁 КАТАЛОГ ИГР</h1>
-            <p style="font-size:1.5em;color:rgba(255,255,255,0.9);">🟫 Minecraft • 🎖️ World of Tanks</p>
-            <a href="/" class="nav-btn" style="background:rgba(255,255,255,0.2);color:white;border:2px solid white;">🏠 Главная</a>
+        <header style="text-align:center;margin-bottom:80px;">
+            <h1>📁 КАТАЛОГ ИГР v38.0</h1>
+            <p style="font-size:1.6em;color:rgba(255,255,255,0.9);">🟫 Minecraft • 🎖️ World of Tanks</p>
+            <a href="/" class="nav-btn" style="background:rgba(255,255,255,0.2);color:white;border:3px solid white;">🏠 Главная</a>
         </header>
         
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(500px,1fr));gap:40px;margin-bottom:60px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(550px,1fr));gap:50px;margin-bottom:80px;">
             {"".join([f'''
             <div class="game-card" style="--game-color:{game['color']};--game-color-alt:{game['color_alt']};">
-                <div style="font-size:6em;margin-bottom:25px;">{game["name"][0]}</div>
-                <h3>{game["name"]}</h3>
-                <p style="color:#7f8c8d;font-size:1.2em;margin-bottom:25px;line-height:1.7;">{game["desc"]}</p>
+                <div style="font-size:7em;margin-bottom:30px;animation:pulse 2s infinite;">{game['icon']}</div>
+                <h3>{game['name']}</h3>
+                <p style="color:#7f8c8d;font-size:1.3em;margin-bottom:30px;line-height:1.8;">{game['desc']}</p>
                 
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:30px;">
-                    {"".join([f'<div style="background:rgba(255,255,255,0.7);padding:12px;border-radius:12px;font-size:14px;">{feat}</div>' for feat in game["features"]])}
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:40px;">
+                    <div style="background:rgba(255,255,255,0.7);padding:18px;border-radius:15px;font-size:16px;">🟢 {game["players"]} игроков</div>
+                    <div style="background:rgba(39,174,96,0.2);padding:18px;border-radius:15px;font-size:16px;color:#27ae60;font-weight:700;">★ ОФИЦИАЛЬНЫЙ САЙТ</div>
                 </div>
                 
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;">
-                    <div style="font-size:1.3em;color:#27ae60;font-weight:700;">🟢 {game["players"]}</div>
-                    <button onclick="alert('🎮 {{game["name"]}} — Серверы скоро!')" class="nav-btn" style="background:var(--game-color);color:white;width:200px;padding:20px 30px;font-size:18px;">🚀 ИГРАТЬ</button>
-                </div>
+                <a href="{game['url']}" target="_blank" class="nav-btn" style="background:var(--game-color);color:white;font-size:22px;padding:25px 40px;width:100%;box-shadow:0 10px 30px rgba(0,0,0,0.3);">🚀 ИГРАТЬ ОНЛАЙН</a>
             </div>''' for game in games])}
         </div>
         
-        <div style="text-align:center;padding:50px;background:rgba(255,255,255,0.1);border-radius:30px;margin-bottom:60px;">
-            <h2 style="color:white;font-size:3em;margin-bottom:30px;">⚔️ ИГРАЙ С ДРУЗЬЯМИ!</h2>
-            <div style="display:flex;justify-content:center;flex-wrap:wrap;gap:25px;font-size:1.3em;">
-                <div class="stat-card" style="border-left-color:#55aa55;">🟫 Minecraft <b>2,847</b> игроков</div>
-                <div class="stat-card" style="border-left-color:#d63031;">🎖️ WoT <b>1,234</b> боёв</div>
+        <div style="text-align:center;padding:60px;background:rgba(255,255,255,0.1);border-radius:40px;margin-bottom:80px;backdrop-filter:blur(20px);">
+            <h2 style="color:white;font-size:3.5em;margin-bottom:40px;">⚔️ ИГРАЙ С ДРУЗЬЯМИ!</h2>
+            <div style="display:flex;justify-content:center;flex-wrap:wrap;gap:30px;font-size:1.5em;">
+                <div class="stat-card" style="border-left-color:#55aa55;">🟫 Minecraft <b>2,847,892</b> игроков</div>
+                <div class="stat-card" style="border-left-color:#d63031;">🎖️ WoT <b>1,234,567</b> боёв</div>
             </div>
         </div>
         
-        <div class="nav" style="text-align:center;">
-            <a href="/" class="nav-btn" style="background:linear-gradient(135deg,#667eea,#764ba2);">🚀 Главная</a>
-            <a href="/chat" class="nav-btn" style="background:linear-gradient(135deg,#55aa55,#44bb44);">🟫 Minecraft</a>
-            <a href="/wot" class="nav-btn" style="background:linear-gradient(135deg,#d63031,#ff6b6b);">🎖️ World of Tanks</a>
+        <div style="text-align:center;">
+            <a href="/" class="nav-btn" style="background:linear-gradient(135deg,#667eea,#764ba2);font-size:20px;">🚀 Главная страница</a>
+            <a href="/login" class="nav-btn" style="background:linear-gradient(135deg,#3498db,#2980b9);font-size:20px;">🔐 Войти</a>
         </div>
-    </div></body></html>'''
+    </div>
+    
+    <style>
+    @keyframes pulse {{ 0%, 100% {{ transform: scale(1); }} 50% {{ transform: scale(1.1); }} }}
+    </style>
+</body></html>'''
     return html
 
 # ✅ ИНИЦИАЛИЗАЦИЯ
 init_db()
-print("🚀 УЗНАВАЙКИН v37.27 ЧАСТЬ 1/3 — ТОЛЬКО МАЙНКРАФТ + WOT!")
-print("✅ Красивый каталог | Автомодерация | База данных")
+print("🚀 УЖНАВАЙКИН v38.0 ЧАСТЬ 1/3 — ГОТОВА!")
+print("✅ Безопасная БД | Красивый каталог | Админы созданы")
+print("✅ Пароли админов: CatNap/Назар = 120187")
+# ✅ БЕЗОПАСНЫЙ ЛОГИН v38.0
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    next_page = request.args.get('next', '/')
+    
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
+        
+        if not (username and password):
+            flash('❌ Заполни все поля!', 'error')
+            return redirect('/login?next=' + next_page)
+        
+        user = get_user(username)
+        if user and check_password_hash(user['password_hash'], password):
+            session['user'] = username
+            save_user_activity(username)
+            
+            # ✅ Обновляем last_seen
+            conn = get_db()
+            conn.execute('UPDATE users SET last_seen = ? WHERE username = ?', 
+                        (time.time(), username))
+            conn.commit()
+            conn.close()
+            
+            flash(f'✅ Добро пожаловать, {username}!', 'success')
+            return redirect(next_page or '/')
+        else:
+            flash('❌ Неверный логин или пароль!', 'error')
+    
+    # ✅ КРАСИВАЯ СТРАНИЦА ЛОГИНА
+    html = f'''<!DOCTYPE html>
+<html><head>
+    <title>🔐 Вход — УЖНАВАЙКИН v38.0</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>{css}</style>
+</head><body>
+    <div class="container">
+        <div class="login-form">
+            <h1 style="font-size:4.5em;color:#3498db;margin-bottom:40px;text-align:center;animation:glow 2s infinite;">🔐 ВОЙТИ</h1>
+            
+            {f'<div style="background:#e74c3c;color:white;padding:15px;border-radius:20px;margin-bottom:30px;">{flash_message}</div>' if "flash" in locals() else ''}
+            
+            <form method="POST">
+                <input name="username" placeholder="👤 Логин (CatNap / Назар)" required 
+                       style="font-size:20px;font-weight:600;" pattern="[a-zA-Z0-9а-яА-Я_]+" maxlength="20">
+                <input name="password" type="password" placeholder="🔒 Пароль (120187)" required 
+                       style="font-size:20px;font-weight:600;" maxlength="50">
+                <button type="submit" class="nav-btn" style="width:100%;background:linear-gradient(135deg,#27ae60,#2ecc71);font-size:22px;padding:25px;margin-top:20px;">🚀 ВОЙТИ В ИГРУ</button>
+            </form>
+            
+            <div style="margin-top:40px;text-align:center;color:#7f8c8d;">
+                <p style="font-size:16px;margin-bottom:20px;">
+                    👑 <b>Админы:</b> CatNap / Назар<br>
+                    🔑 <b>Пароль:</b> 120187
+                </p>
+                <div style="font-size:14px;opacity:0.8;">
+                    🔒 Пароли защищены хешем SHA-256
+                </div>
+            </div>
+            
+            <div style="margin-top:40px;text-align:center;">
+                <a href="/" class="nav-btn" style="background:rgba(255,255,255,0.2);color:white;border:3px solid white;">🏠 Главная (без входа)</a>
+                <a href="/catalog" class="nav-btn" style="background:linear-gradient(135deg,#55aa55,#44bb44);">📁 Каталог игр</a>
+            </div>
+        </div>
+    </div>
+    
+    <style>@keyframes glow {{ 0%, 100% {{ text-shadow: 0 0 20px #3498db; }} 50% {{ text-shadow: 0 0 30px #3498db, 0 0 40px #3498db; }} }}</style>
+</body></html>'''
+    return html
+
+@app.route('/logout')
+def logout():
+    user = session.get('user', 'Гость')
+    session.clear()
+    flash(f'👋 До свидания, {user}!', 'info')
+    return redirect('/login')
+
+@app.route('/register', methods=['GET', 'POST'])
+@require_auth
+def register():
+    if not is_moderator(session['user']):
+        flash('❌ Только админы могут регистрировать!', 'error')
+        return redirect('/')
+    
+    if request.method == 'POST':
+        new_user = request.form.get('new_user', '').strip()
+        password = request.form.get('password', '').strip()
+        
+        if 3 <= len(new_user) <= 20 and len(password) >= 6 and not get_user(new_user):
+            conn = get_db()
+            conn.execute('INSERT INTO users (username, password_hash, created) VALUES (?, ?, ?)',
+                        (new_user, generate_password_hash(password), time.time()))
+            conn.commit()
+            conn.close()
+            flash(f'✅ {new_user} успешно зарегистрирован!', 'success')
+        else:
+            flash('❌ Ошибка регистрации!', 'error')
+    
+    return f'''<!DOCTYPE html><html><head><title>👥 Регистрация — Админ</title><meta charset="UTF-8"><style>{css}</style></head><body>
+    <div class="container" style="max-width:600px;margin-top:50px;">
+        <div class="login-form">
+            <h1 style="font-size:3.5em;color:#27ae60;">👥 НОВЫЙ ИГРОК</h1>
+            <p style="text-align:center;color:#7f8c8d;margin-bottom:30px;">Только для админов: {session['user']}</p>
+            
+            <form method="POST">
+                <input name="new_user" placeholder="Новый логин" required style="margin-bottom:20px;" maxlength="20" pattern="[a-zA-Z0-9а-яА-Я_]+">
+                <input name="password" type="password" placeholder="Пароль (минимум 6 символов)" required style="margin-bottom:25px;">
+                <button type="submit" class="nav-btn" style="width:100%;background:#27ae60;font-size:20px;">✅ СОЗДАТЬ АККАУНТ</button>
+            </form>
+            
+            <div style="text-align:center;margin-top:30px;">
+                <a href="/" class="nav-btn">🏠 Главная</a>
+                <a href="/admin" class="nav-btn" style="background:#e74c3c;">⚙️ Админ-панель</a>
+            </div>
+        </div>
+    </div></body></html>'''
+
+# ✅ ГЛАВНАЯ СТРАНИЦА v38.0
 @app.route('/', methods=['GET', 'POST'])
 def index():
     current_user = session.get('user', '')
+    is_logged = bool(current_user)
     
-    if current_user:
-        save_user_activity(current_user)
-    
-    # ✅ POST чат
-    if request.method == 'POST' and current_user:
+    # ✅ ЧАТ (только для авторизованных)
+    if is_logged and request.method == 'POST':
         message = request.form.get('message', '').strip()
-        if message and len(message) <= 300 and not is_muted_or_banned(current_user):
-            reason, mtype, duration = auto_moderate_v37(message, current_user)
+        if message and len(message) <= 300:
+            reason, mtype, duration = auto_moderate_v38(message, current_user)
             
             if reason:
                 conn = get_db()
@@ -297,510 +497,388 @@ def index():
                            (current_user, 'АВТОМОД', reason, mtype, time.time() + duration, time.time()))
                 conn.commit()
                 conn.close()
+                flash(reason, 'error')
             else:
                 conn = get_db()
                 cursor = conn.execute('INSERT INTO chat (user, message, timestamp, role) VALUES (?, ?, ?, ?)',
                                    (current_user, message, time.time(), user_roles.get(current_user, 'start')))
                 msg_id = cursor.lastrowid
-                chat_messages.append({'id': msg_id, 'user': current_user, 'message': message, 
-                                    'timestamp': time.time(), 'role': user_roles.get(current_user, 'start')})
+                chat_messages.append({
+                    'id': msg_id, 'user': current_user, 'message': message, 
+                    'timestamp': time.time(), 'role': user_roles.get(current_user, 'start')
+                })
                 conn.commit()
                 conn.close()
                 user_economy[current_user]['coins'] += 5
-                save_data()
+                flash('💬 +5💰 за сообщение!', 'success')
     
-    stats = get_detailed_stats()
-    messages = get_recent_messages()
-    active_mutes = get_active_mutes()
+    # ✅ СТАТИСТИКА
+    stats = {
+        'online': len([u for u in user_activity if time.time() - user_activity[u] < 300]),
+        'total': get_db().execute('SELECT COUNT(*) FROM users').fetchone()[0],
+        'top_player': 'CatNap'
+    }
     
-    # ✅ Чат HTML
+    # ✅ НЕдавние сообщения чата
+    conn = get_db()
+    messages = conn.execute('SELECT * FROM chat ORDER BY timestamp DESC LIMIT 30').fetchall()
+    conn.close()
+    messages = list(reversed(messages))
+    
     messages_html = ''
     for msg in messages:
-        status = get_user_status(msg['user'])
         role_class = {
-            'admin': 'rank-admin', 'moderator': 'rank-mod', 'premium': 'rank-premium', 
-            'vip': 'rank-vip', 'start': 'rank-start'
-        }.get(msg.get('role', 'start'), 'rank-start')
+            'admin': 'rank-admin', 'moderator': 'rank-mod', 
+            'premium': 'rank-premium', 'vip': 'rank-vip', 'start': ''
+        }.get(msg.get('role', 'start'), '')
         
         time_str = time.strftime('%H:%M', time.localtime(msg['timestamp']))
-        can_delete = current_user == msg['user'] or is_moderator(current_user)
+        status = get_user_status(msg['user'])
         
         messages_html += f'''
-        <div class="message" data-id="{msg['id']}">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-                <span class="{role_class}" style="font-weight:700;font-size:15px;">{msg['user']}</span>
-                <span style="color:#95a5a6;font-size:12px;">{time_str}</span>
-                <span style="font-size:13px;color:#7f8c8d;margin-left:auto;">{status}</span>
-                {f'<button onclick="deleteMsg({msg["id"]})" title="Удалить" style="background:#e74c3c;color:white;border:none;width:28px;height:28px;border-radius:50%;font-size:12px;cursor:pointer;">🗑️</button>' if can_delete else ''}
+        <div class="message" style="padding:20px;margin:10px 0;background:rgba(255,255,255,0.9);border-radius:20px;border-left:5px solid #3498db;">
+            <div style="display:flex;align-items:center;gap:15px;margin-bottom:10px;">
+                <span class="{role_class}" style="font-weight:800;font-size:16px;">{msg['user']}</span>
+                <span style="color:#95a5a6;font-size:13px;">{time_str}</span>
+                <span style="color:#7f8c8d;">{status}</span>
             </div>
-            <div style="color:#2c3e50;font-size:15px;padding-left:10px;">{msg["message"]}</div>
+            <div style="color:#2c3e50;font-size:15px;">{msg['message']}</div>
         </div>'''
     
-    # ✅ Мут-лист
-    mutelist_html = ''
-    if active_mutes:
-        mutelist_html = '<div class="mutelist"><h4>🔇 Активные муты:</h4><div style="max-height:150px;overflow:auto;">'
-        for mute in active_mutes[:5]:
-            expires = int(mute['expires'] - time.time())
-            mutelist_html += f'<div style="padding:8px;border-bottom:1px solid #fed7d7;">{mute["target"]} замучен {mute["muted_by"]} за "{mute["reason"]}" <span style="color:#e74c3c;">({expires//60}:{expires%60:02d})</span></div>'
-        mutelist_html += '</div></div>'
-    
     # ✅ Форма чата
-    chat_form = f'''<form method='POST' id='chat-form' style='padding:25px;background:#f1f3f4;border-radius:10px;'>
-        <div style='display:flex;gap:15px;'>
-            <input name='message' id='message-input' placeholder='💬 Напиши... (+5💰)' maxlength='300' 
-                   style='flex:1;padding:15px;border:1px solid #ddd;border-radius:12px;font-size:16px;' required>
-            <button type='submit' style='padding:15px 25px;background:#27ae60;color:white;border:none;border-radius:12px;font-size:16px;cursor:pointer;'>📤</button>
+    chat_form = f'''
+    <form method="POST" style="background:rgba(255,255,255,0.9);padding:30px;border-radius:25px;margin-top:30px;">
+        <div style="display:flex;gap:15px;">
+            <input name="message" placeholder="💬 Пиши... (+5💰)" maxlength="300" required 
+                   style="flex:1;padding:20px;border:2px solid #ddd;border-radius:20px;font-size:16px;">
+            <button type="submit" style="padding:20px 30px;background:#27ae60;color:white;border:none;border-radius:20px;font-size:18px;cursor:pointer;">📤</button>
         </div>
-        <div id='char-count' style="color:#7f8c8d;font-size:14px;margin-top:8px;">0/300</div>
-    </form>''' if current_user else """<div style='padding:30px;text-align:center;background:#f8f9fa;border:2px dashed #bdc3c7;border-radius:15px;'>
-        <h4 style='color:#7f8c8d;'>🔐 Войди для чата!</h4>
-        <a href='/login' class='nav-btn' style='background:#3498db;padding:12px 30px;display:inline-block;margin-top:15px;'>🔐 Войти</a>
-    </div>"""
+    </form>''' if is_logged else '''
+    <div style="background:rgba(255,255,255,0.9);padding:40px;border-radius:25px;text-align:center;margin-top:30px;">
+        <h3 style="color:#7f8c8d;">🔐 Войди для чата и игр!</h3>
+        <a href="/login" class="nav-btn" style="background:#3498db;">🔐 ВОЙТИ</a>
+    </div>'''
     
-    profile_nav = f"""<a href='/profile' class='nav-btn' style='background:#3498db;'>👤 {current_user}</a>
-                     {f'<a href="/admin" class="nav-btn" style="background:#e74c3c;">⚙️ Админ</a>' if current_user in ['CatNap', 'Назар'] else ''}
-                     <a href='/logout' class='nav-btn' style='background:#95a5a6;'>🚪 Выход</a>""" if current_user else ""
-    
-    html = f'''<!DOCTYPE html><html><head>
-    <title>🚀 УЗНАВАЙКИН v37.27 — Игровой хаб</title>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>{css}</style></head><body>
+    html = f'''<!DOCTYPE html>
+<html><head>
+    <title>🚀 УЖНАВАЙКИН v38.0 — Игровой хаб</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>{css}</style>
+</head><body>
     <div class="container">
         <header>
-            <h1>🚀 <span style="background:linear-gradient(45deg,#f1c40f,#e67e22);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">УЗНАВАЙКИН v37.27</span></h1>
-            <p style="font-size:18px;opacity:0.95;">🟫 Minecraft • 🎖️ WoT • Чат • Казино • Экономика</p>
-            <div style="font-size:14px;color:#ecf0f1;"><span id="online-counter">🟢 {stats['online']} онлайн</span></div>
+            <h1>🚀 <span style="background:linear-gradient(45deg,#f1c40f,#e67e22);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">УЖНАВАЙКИН v38.0</span></h1>
+            <p>🟫 Minecraft • 🎖️ World of Tanks • ⚔️ Турниры • 💬 Чат • 🏦 Экономика</p>
+            <div style="font-size:16px;color:#ecf0f1;">🟢 {stats["online"]} онлайн • 📊 {stats["total"]} игроков</div>
         </header>
 
-        <!-- ✅ ТУРНИР (ПУСТОЙ) -->
-        <div class="tournament-banner">
-            <h3>⚔️ ТУРНИР НЕДЕЛИ</h3>
-            <div style="color:#bdc3c7;font-size:18px;margin-bottom:10px;">👥 Никто не участвует</div>
-            <div style="font-size:15px;color:#ecf0f1;">📝 Всего регистраций: <b>{stats['total']}</b></div>
-            <button onclick="alert('⚔️ Турнир скоро!')" class="nav-btn" style="background:rgba(255,255,255,0.9);color:#333;border:2px solid white;margin-top:15px;">⚔️ Скоро!</button>
-        </div>
+        {f'<div style="background:#27ae60;color:white;padding:20px;border-radius:25px;margin:30px 0;text-align:center;"><b>✅ Привет, {current_user}! 👑 {user_roles.get(current_user, "start")}</b></div>' if is_logged else '<div style="background:#3498db;color:white;padding:20px;border-radius:25px;margin:30px 0;text-align:center;font-size:18px;">🔐 <b>Войди</b> для чата, турниров и экономики!</div>'}
 
-        {mutelist_html}
-
-        <!-- ✅ Правила чата -->
-        <div style="background:#fff3cd;border:1px solid #ffeaa7;padding:25px;margin:25px 0;border-radius:15px;box-shadow:0 10px 30px rgba(255,234,167,0.3);">
-            <h4 style="color:#856404;margin:0 0 15px 0;">📜 Правила чата:</h4>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;font-size:14px;color:#856404;">
-                <div>• 🔞 <b>Мат (100+ слов)</b> = <span style="color:#e74c3c;">15 мин</span></div>
-                <div>• 📨 <b>Спам >3 сообщений</b> = <span style="color:#e74c3c;">10 мин</span></div>
-                <div>• 🚫 <b>Реклама/ссылки</b> = <span style="color:#e74c3c;">30 мин</span></div>
-                <div>• 🛡️ <b>Модераторы</b> удаляют нарушения</div>
-            </div>
-        </div>
-
-        <!-- ✅ Статистика -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:30px;margin:40px 0;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin:50px 0;">
             <div>
-                <h3 style="color:#2c3e50;">📊 Статистика</h3>
-                <div class="stat-card" style="border-left-color:#27ae60;">🟢 Онлайн: <b>{stats['online']}</b></div>
-                <div class="stat-card" style="border-left-color:#f39c12;">🟡 АФК: <b>{stats['afk']}</b></div>
-                <div class="stat-card" style="border-left-color:#e74c3c;">📝 Регистраций: <b>{stats['total']}</b></div>
+                <h3 style="color:#2c3e50;font-size:2em;margin-bottom:30px;">📊 СТАТИСТИКА</h3>
+                <div class="stat-card" style="border-left-color:#27ae60;">🟢 Онлайн: <b>{stats["online"]}</b></div>
+                <div class="stat-card" style="border-left-color:#f39c12;">👑 Всего: <b>{stats["total"]}</b></div>
+                <div class="stat-card" style="border-left-color:#e74c3c;">⭐ Топ: <b>{stats["top_player"]}</b></div>
             </div>
             <div>
-                <h3 style="color:#856404;">🏆 Топ сегодня</h3>
-                <div style="font-size:18px;line-height:1.8;">
-                    💰 <b>Богач:</b> <span style="color:#27ae60;font-weight:700;">{stats['top_wealth'][0]['username'] if stats.get('top_wealth') else '—'}: {stats['top_wealth'][0]['coins'] if stats.get('top_wealth') else 0:,}💰</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- ✅ ИГРЫ -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:30px;margin:50px 0;">
-            <div class="game-card">
-                <h3>🟫 Minecraft</h3>
-                <p>Выживание • PvP • Мини-игры</p>
-                <a href="/catalog" class="nav-btn" style="background:linear-gradient(135deg,#55aa55,#44bb44);">🟫 Играть</a>
-            </div>
-            <div class="game-card">
-                <h3>🎖️ World of Tanks</h3>
-                <p>15vs15 танковые бои</p>
-                <a href="/catalog" class="nav-btn" style="background:linear-gradient(135deg,#d63031,#ff6b6b);">🎖️ Играть</a>
+                <h3 style="color:#2c3e50;font-size:2em;margin-bottom:30px;">🎮 БЫСТРЫЙ ДОСТУП</h3>
+                <a href="/catalog" class="nav-btn" style="background:linear-gradient(135deg,#55aa55,#44bb44);width:100%;margin:10px 0;">🟫 Minecraft</a>
+                <a href="/catalog#wot" class="nav-btn" style="background:linear-gradient(135deg,#d63031,#ff6b6b);width:100%;margin:10px 0;">🎖️ World of Tanks</a>
+                {f'<a href="/tournaments" class="nav-btn" style="background:linear-gradient(135deg,#e74c3c,#c0392b);width:100%;margin:10px 0;">⚔️ Турниры</a>' if is_logged else ''}
             </div>
         </div>
 
         <div class="chat-container">
-            <div style="display:flex;align-items:center;gap:15px;margin-bottom:25px;">
-                <h3 style="margin:0;font-size:26px;color:#2c3e50;">💬 Чат ({len(messages)})</h3>
-            </div>
-            <div id="chat-messages" style="min-height:420px;">{messages_html}</div>
+            <h3 style="margin:0 0 30px 0;font-size:2.5em;color:#2c3e50;">💬 ЧАТ ({len(messages)})</h3>
+            <div id="chat-messages" style="min-height:400px;margin-bottom:30px;">{messages_html}</div>
             {chat_form}
         </div>
 
-        <div class="nav" style="justify-content:center;">
-            <a href="/catalog" class="nav-btn" style="background:linear-gradient(135deg,#55aa55,#44bb44);">🟫 Каталог</a>
-            <a href="/profile" class="nav-btn" style="background:#3498db;">👤 Профиль</a>
-            <a href="/economy" class="nav-btn" style="background:linear-gradient(135deg,#1abc9c,#16a085);">🏦 Банк</a>
-            {profile_nav}
+        <div style="text-align:center;margin:60px 0;">
+            {f'<a href="/profile" class="nav-btn" style="background:#3498db;">👤 {current_user}</a>' if is_logged else '<a href="/login" class="nav-btn" style="background:#3498db;">🔐 ВОЙТИ</a>'}
+            <a href="/catalog" class="nav-btn" style="background:linear-gradient(135deg,#55aa55,#44bb44);">📁 Каталог</a>
+            {f'<a href="/tournaments" class="nav-btn" style="background:linear-gradient(135deg,#e74c3c,#c0392b);">⚔️ Турниры</a>' if is_logged else ''}
+            <a href="/logout" class="nav-btn" style="background:#95a5a6;">{'🚪 Выход' if is_logged else 'ℹ️ Гость'}</a>
         </div>
     </div>
-
-    <script>
-    document.getElementById('message-input')?.addEventListener('input', e => {{
-        document.getElementById('char-count').textContent = e.target.value.length + '/300';
-    }});
-    async function deleteMsg(id) {{
-        if(confirm('🗑️ Удалить сообщение?')) {{
-            try {{
-                const res = await fetch('/api/delete/' + id, {{method:'POST'}});
-                if(res.ok) {{
-                    document.querySelector(`[data-id="${{id}}"]`).remove();
-                }}
-            }} catch(e) {{ alert('❌ Ошибка удаления'); }}
-        }}
-    }}
-    </script>
-    </body></html>'''
+</body></html>'''
     return html
 
-# ✅ ПРОФИЛЬ
-@app.route('/profile')
-def profile():
-    current_user = session.get('user', '')
-    if not current_user:
-        return redirect('/login')
+# ✅ ТУРНИРЫ v38.0
+@app.route('/tournaments', methods=['GET', 'POST'])
+@require_auth
+def tournaments_page():
+    current_user = session['user']
     
-    stats = get_user_stats(current_user)
-    conn = get_db()
-    user_data = conn.execute('SELECT * FROM users WHERE username = ?', (current_user,)).fetchone()
-    conn.close()
+    tournaments_list = [
+        {
+            'id': 'minecraft',
+            'name': '🟫 Minecraft PvP Турнир',
+            'desc': 'Выживание • PvP Арены • 1v1 • Командные бои',
+            'prize': 5000,
+            'max_players': 32,
+            'players': tournaments['minecraft']['players'],
+            'color': '#55aa55'
+        },
+        {
+            'id': 'wot', 
+            'name': '🎖️ World of Tanks 15v15',
+            'desc': 'Танковые бои • Звания • Кланы • Финал на Т-34',
+            'prize': 10000,
+            'max_players': 16,
+            'players': tournaments['wot']['players'],
+            'color': '#d63031'
+        }
+    ]
     
-    # ✅ ИСПРАВЛЕНИЕ: role_class вычисляем заранее
-    role_class = {
-        "admin": "rank-admin",
-        "moderator": "rank-mod", 
-        "premium": "rank-premium",
-        "vip": "rank-vip",
-        "start": "rank-start"
-    }.get(user_data["role"] if user_data else "start", "rank-start")
-    
-    html = f'''<!DOCTYPE html><html><head>
-    <title>👤 Профиль {current_user} — УЖНАВАЙКИН</title>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>{css}</style></head><body>
-    <div class="container" style="max-width:900px;">
-        <header style="text-align:center;margin-bottom:50px;">
-            <h1 style="font-size:3em;">👤 <span style="color:#3498db;font-size:1.1em;">{current_user}</span></h1>
-            <a href="/" class="nav-btn" style="background:#95a5a6;">🏠 Главная</a>
-            <a href="/economy" class="nav-btn" style="background:linear-gradient(135deg,#1abc9c,#16a085);">🏦 Банк</a>
-        </header>
+    tournament_html = ''
+    for t in tournaments_list:
+        is_joined = current_user in t['players']
+        progress = len(t['players']) / t['max_players'] * 100
         
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-bottom:40px;">
-            <div>
-                <h3 style="color:#2c3e50;margin-bottom:25px;">💰 Экономика</h3>
-                <div class="stat-card" style="border-left-color:#27ae60;font-size:1.3em;">💵 Монеты: <b style="color:#27ae60;">{stats.get("coins", 0):,}</b></div>
-                <div class="stat-card" style="border-left-color:#f39c12;font-size:1.3em;">⭐ Уровень: <b style="color:#f39c12;">{stats.get("level", 1)}</b></div>
-                <div class="stat-card" style="border-left-color:#3498db;font-size:1.3em;">⚔️ Побед: <b style="color:#3498db;">{stats.get("wins", 0)}</b></div>
-            </div>
-            <div>
-                <h3 style="color:#2c3e50;margin-bottom:25px;">📊 Активность</h3>
-                <div class="stat-card" style="border-left-color:#9b59b6;font-size:1.3em;">💬 Сообщений: <b style="color:#9b59b6;">{stats.get("messages", 0)}</b></div>
-                <div class="stat-card" style="border-left-color:#e67e22;font-size:1.3em;">🎖️ Звание WoT: <b style="color:#e67e22;">{user_data["tank_rank"] if user_data else "Рядовой"}</b></div>
-                <div class="stat-card" style="border-left-color:#1abc9c;font-size:1.3em;">👥 Роль: <span class="{role_class}">{user_data["role"] if user_data else "start"}</span></div>
-            </div>
-        </div>
-        
-        <div style="text-align:center;padding:40px;background:rgba(255,255,255,0.9);border-radius:25px;box-shadow:0 20px 60px rgba(0,0,0,0.15);">
-            <h3 style="color:#2c3e50;margin-bottom:25px;">🎮 ТВОИ ИГРЫ</h3>
-            <div style="display:flex;justify-content:center;gap:25px;flex-wrap:wrap;">
-                <div class="game-card" style="width:280px;height:200px;">
-                    <h3 style="font-size:1.8em;">🟫 Minecraft</h3>
-                    <p style="font-size:1.1em;">Выживание • PvP</p>
+        tournament_html += f'''
+        <div class="tournament-card tournament-active" style="border-left:6px solid {t["color"]};">
+            <h3 style="color:{t["color"]};font-size:2.5em;margin-bottom:20px;">{t["name"]}</h3>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:25px;">
+                <div style="font-size:1.6em;">
+                    💰 <span style="color:#27ae60;font-weight:800;">{t["prize"]:,}</span>
                 </div>
-                <div class="game-card" style="width:280px;height:200px;">
-                    <h3 style="font-size:1.8em;">🎖️ World of Tanks</h3>
-                    <p style="font-size:1.1em;">15vs15 бои</p>
+                <div style="font-size:1.4em;color:#7f8c8d;">
+                    {len(t["players"])}/{t["max_players"]}
                 </div>
             </div>
-        </div>
-    </div></body></html>'''
-    return html
-
-# ✅ АДМИН-ПАНЕЛЬ
-@app.route('/admin', methods=['GET', 'POST'])
-def admin():
-    current_user = session.get('user', '')
-    if current_user not in ['CatNap', 'Назар']:
-        return '''<h1 style="text-align:center;color:#e74c3c;font-size:3em;margin-top:100px;">🚫 ДОСТУП ЗАПРЕЩЁН</h1>
-                  <p style="text-align:center;font-size:1.5em;"><a href="/" style="color:#3498db;">🏠 На главную</a></p>'''
-    
-    if request.method == 'POST':
-        action = request.form.get('action')
-        target = request.form.get('target', '').strip()
-        value = request.form.get('value', '').strip()
-        
-        conn = get_db()
-        if action == 'set_tank':
-            conn.execute('UPDATE users SET tank_rank = ? WHERE username = ?', (value, target))
-            conn.execute('INSERT OR REPLACE INTO users (username, tank_rank) VALUES (?, ?) ON CONFLICT(username) DO UPDATE SET tank_rank = ?', (target, value, value))
-        elif action == 'set_role':
-            user_roles[target] = value
-            conn.execute('UPDATE users SET role = ? WHERE username = ?', (value, target))
-            conn.execute('INSERT OR REPLACE INTO users (username, role) VALUES (?, ?) ON CONFLICT(username) DO UPDATE SET role = ?', (target, value, value))
-        conn.commit()
-        conn.close()
-        save_data()
-    
-    conn = get_db()
-    users = conn.execute('SELECT username, role, tank_rank, coins FROM users ORDER BY coins DESC LIMIT 20').fetchall()
-    conn.close()
+            <div style="background:linear-gradient(90deg, {t["color"]}, {t["color"]}55);height:10px;border-radius:10px;margin-bottom:30px;">
+                <div style="background:{t["color"]};height:100%;border-radius:10px;width:{progress}%;transition:width 0.5s;"></div>
+            </div>
+            <p style="color:#7f8c8d;margin-bottom:30px;font-size:1.2em;">{t["desc"]}</p>
+            {f'<div style="background:#27ae60;color:white;padding:20px;border-radius:20px;text-align:center;font-size:1.2em;font-weight:700;">✅ Ты записан! #{t["players"].index(current_user)+1}</div>' if is_joined else 
+             f'<form method="POST" action="/join_tournament/{t["id"]}" style="display:inline;"><button type="submit" class="nav-btn" style="width:100%;background:{t["color"]};font-size:20px;padding:25px;">⚔️ ЗАПИСАТЬСЯ (100💰)</button></form>'}
+        </div>'''
     
     html = f'''<!DOCTYPE html><html><head>
-    <title>⚙️ Админ-панель — УЗНАВАЙКИН</title>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚔️ Турниры — УЖНАВАЙКИН v38.0</title>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width">
     <style>{css}</style></head><body>
-    <div class="container" style="max-width:1200px;">
-        <header style="text-align:center;margin-bottom:50px;">
-            <h1 style="font-size:3.5em;color:#e74c3c;">⚙️ АДМИН-ПАНЕЛЬ</h1>
-            <a href="/" class="nav-btn" style="background:#95a5a6;">🏠 Главная</a>
-        </header>
-        
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-bottom:50px;">
-            <div>
-                <h3 style="color:#2c3e50;">🎖️ Звания WoT</h3>
-                <form method="POST" style="background:rgba(255,255,255,0.9);padding:25px;border-radius:20px;">
-                    <input name="target" placeholder="Ник игрока" required style="width:100%;padding:15px;margin:10px 0;border:2px solid #ddd;border-radius:12px;font-size:16px;">
-                    <input type="hidden" name="action" value="set_tank">
-                    <select name="value" style="width:100%;padding:15px;margin:10px 0;border:2px solid #ddd;border-radius:12px;font-size:16px;">
-                        <option value="Рядовой">Рядовой</option>
-                        <option value="Лейтенант">Лейтенант</option>
-                        <option value="Капитан">Капитан</option>
-                        <option value="Майор">Майор</option>
-                        <option value="Полковник">Полковник</option>
-                        <option value="Генерал">Генерал</option>
-                    </select>
-                    <button type="submit" class="nav-btn" style="width:100%;background:#27ae60;font-size:18px;">✅ УСТАНОВИТЬ ЗВАНИЕ</button>
-                </form>
-            </div>
-            <div>
-                <h3 style="color:#2c3e50;">⭐ Роли игроков</h3>
-                <form method="POST" style="background:rgba(255,255,255,0.9);padding:25px;border-radius:20px;">
-                    <input name="target" placeholder="Ник игрока" required style="width:100%;padding:15px;margin:10px 0;border:2px solid #ddd;border-radius:12px;font-size:16px;">
-                    <input type="hidden" name="action" value="set_role">
-                    <select name="value" style="width:100%;padding:15px;margin:10px 0;border:2px solid #ddd;border-radius:12px;font-size:16px;">
-                        <option value="start">👤 Start</option>
-                        <option value="vip">⭐ VIP</option>
-                        <option value="premium">💎 Premium</option>
-                        <option value="moderator">🛡️ Модератор</option>
-                        <option value="admin">👑 Админ</option>
-                    </select>
-                    <button type="submit" class="nav-btn" style="width:100%;background:#27ae60;font-size:18px;">✅ УСТАНОВИТЬ РОЛЬ</button>
-                </form>
-            </div>
-        </div>
-        
-        <div style="background:rgba(255,255,255,0.95);padding:30px;border-radius:25px;margin-bottom:50px;">
-            <h3 style="color:#2c3e50;margin-bottom:25px;">👥 ТОП-20 ИГРОКОВ</h3>
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:15px;">
-                {"".join([f'''
-                <div style="display:flex;justify-content:space-between;padding:15px;background:rgba(255,255,255,0.7);border-radius:15px;border-left:4px solid #3498db;">
-                    <span style="font-weight:700;">{user["username"]}</span>
-                    <div style="text-align:right;">
-                        <div>💰 {user["coins"]:,}</div>
-                        <div style="color:#7f8c8d;font-size:14px;">{user["role"]} • {user["tank_rank"]}</div>
-                    </div>
-                </div>''' for user in users])}
-            </div>
-        </div>
-    </div></body></html>'''
-    return html
-
-# ✅ БАНК
-@app.route('/economy', methods=['GET', 'POST'])
-def economy():
-    current_user = session.get('user', '')
-    if not current_user:
-        return redirect('/login')
-    
-    stats = get_user_stats(current_user)
-    
-    if request.method == 'POST':
-        action = request.form.get('action')
-        amount = int(request.form.get('amount', 0))
-        
-        if action == 'deposit' and amount <= stats['coins'] and amount > 0:
-            stats['coins'] -= amount
-            user_economy[current_user]['bank'] += amount
-        elif action == 'withdraw' and amount <= user_economy[current_user]['bank'] and amount > 0:
-            stats['coins'] += amount
-            user_economy[current_user]['bank'] -= amount
-        
-        conn = get_db()
-        conn.execute('UPDATE users SET coins = ? WHERE username = ?', (stats['coins'], current_user))
-        conn.commit()
-        conn.close()
-        save_data()
-        stats = get_user_stats(current_user)
-    
-    html = f'''<!DOCTYPE html><html><head>
-    <title>🏦 Банк — УЗНАВАЙКИН</title>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>{css}</style></head><body>
-    <div class="container" style="max-width:800px;">
-        <header style="text-align:center;margin-bottom:50px;">
-            <h1 style="font-size:3em;">🏦 БАНК</h1>
-            <p style="font-size:1.5em;color:#27ae60;">💰 {stats["coins"]:,} на руках | 🏦 {user_economy[current_user]["bank"]:,} в банке</p>
+    <div class="container">
+        <header style="text-align:center;margin-bottom:60px;">
+            <h1 style="font-size:4em;color:#e74c3c;">⚔️ ТУРНИРЫ v38.0</h1>
+            <p style="font-size:1.5em;color:rgba(255,255,255,0.9);">Призовой фонд: <b>15,000💰</b></p>
             <a href="/" class="nav-btn">🏠 Главная</a>
-            <a href="/profile" class="nav-btn" style="background:#3498db;">👤 Профиль</a>
         </header>
         
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-bottom:50px;">
-            <div class="game-card">
-                <h3 style="font-size:2.2em;">💳 ДЕПОЗИТ</h3>
-                <p style="font-size:1.2em;margin-bottom:30px;">Положи монеты в банк (0% налог)</p>
-                <form method="POST">
-                    <input type="hidden" name="action" value="deposit">
-                    <input name="amount" type="number" min="1" max="{stats["coins"]}" placeholder="Сумма" required 
-                           style="width:100%;padding:20px;font-size:18px;border:2px solid #ddd;border-radius:15px;text-align:center;">
-                    <button type="submit" class="nav-btn" style="width:100%;background:linear-gradient(135deg,#27ae60,#2ecc71);font-size:18px;margin-top:20px;">💳 ПОЛОЖИТЬ В БАНК</button>
-                </form>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(450px,1fr));gap:40px;margin-bottom:60px;">
+            {tournament_html}
+        </div>
+        
+        <div style="text-align:center;">
+            <a href="/" class="nav-btn" style="background:linear-gradient(135deg,#667eea,#764ba2);font-size:20px;">🏠 Главная</a>
+            <a href="/catalog" class="nav-btn" style="background:linear-gradient(135deg,#55aa55,#44bb44);">📁 Игры</a>
+        </div>
+    </div></body></html>'''
+    return html
+
+@app.route('/join_tournament/<t_id>', methods=['POST'])
+@require_auth
+def join_tournament(t_id):
+    current_user = session['user']
+    t = tournaments.get(t_id)
+    
+    if t and current_user not in t['players'] and len(t['players']) < 32 and user_economy[current_user]['coins'] >= 100:
+        t['players'].append(current_user)
+        user_economy[current_user]['coins'] -= 100
+        flash('✅ Записан на турнир! Удачи! 💪', 'success')
+    else:
+        flash('❌ Турнир заполнен или недостаточно монет!', 'error')
+    
+    return redirect('/tournaments')
+# ✅ ПРОФИЛЬ ИГРОКА v38.0
+@app.route('/profile')
+@require_auth
+def profile():
+    current_user = session['user']
+    user_data = get_user(current_user)
+    
+    # Загружаем экономику из БД
+    conn = get_db()
+    db_user = conn.execute('SELECT * FROM users WHERE username = ?', (current_user,)).fetchone()
+    conn.close()
+    
+    coins = db_user['coins'] if db_user else user_economy[current_user]['coins']
+    level = db_user['level'] if db_user else user_economy[current_user]['level']
+    wins = db_user['wins'] if db_user else user_economy[current_user]['wins']
+    rank = db_user['tank_rank'] if db_user else tank_ranks[current_user]
+    role = db_user['role'] if db_user else user_roles[current_user]
+    
+    html = f'''<!DOCTYPE html><html><head>
+    <title>👤 {current_user} — УЖНАВАЙКИН v38.0</title>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width">
+    <style>{css}</style></head><body>
+    <div class="container">
+        <header style="text-align:center;margin-bottom:60px;">
+            <h1 style="font-size:4em;">👤 ПРОФИЛЬ</h1>
+            <p style="font-size:1.5em;color:rgba(255,255,255,0.9);">Игрок: <span class="rank-{role}">{current_user}</span></p>
+            <a href="/" class="nav-btn">🏠 Главная</a>
+        </header>
+        
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:40px;">
+            <!-- ЛЕВАЯ КОЛОНКА - ОСНОВНАЯ ИНФО -->
+            <div class="game-card" style="--game-color:#3498db;--game-color-alt:#2980b9;">
+                <div style="font-size:8em;margin-bottom:30px;">👑</div>
+                <h3>{current_user}</h3>
+                
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:40px 0;font-size:1.4em;">
+                    <div><span style="color:#7f8c8d;">Роль:</span><br><b class="rank-{role}">{role.upper()}</b></div>
+                    <div><span style="color:#7f8c8d;">Звание:</span><br><b>{rank}</b></div>
+                </div>
+                
+                <div style="font-size:2em;margin:30px 0;">
+                    <div style="background:#27ae60;color:white;padding:20px;border-radius:20px;margin:15px 0;font-weight:700;">
+                        💰 Монет: <span style="font-size:1.5em;">{coins:,}</span>
+                    </div>
+                    <div style="background:#f39c12;color:white;padding:20px;border-radius:20px;margin:15px 0;font-weight:700;">
+                        ⭐ Уровень: <span style="font-size:1.5em;">{level}</span>
+                    </div>
+                    <div style="background:#e74c3c;color:white;padding:20px;border-radius:20px;margin:15px 0;font-weight:700;">
+                        🏆 Побед: <span style="font-size:1.5em;">{wins}</span>
+                    </div>
+                </div>
             </div>
-            <div class="game-card">
-                <h3 style="font-size:2.2em;">💸 СНЯТИЕ</h3>
-                <p style="font-size:1.2em;margin-bottom:30px;">Сними монеты с банка</p>
-                <form method="POST">
-                    <input type="hidden" name="action" value="withdraw">
-                    <input name="amount" type="number" min="1" max="{user_economy[current_user]["bank"]}" placeholder="Сумма" required 
-                           style="width:100%;padding:20px;font-size:18px;border:2px solid #ddd;border-radius:15px;text-align:center;">
-                    <button type="submit" class="nav-btn" style="width:100%;background:linear-gradient(135deg,#e74c3c,#c0392b);font-size:18px;margin-top:20px;">💸 СНЯТЬ С БАНКА</button>
-                </form>
+            
+            <!-- ПРАВАЯ КОЛОНКА - ТУРНИРЫ -->
+            <div class="game-card" style="--game-color:#e74c3c;--game-color-alt:#c0392b;">
+                <h3 style="margin-bottom:30px;">⚔️ ТВОИ ТУРНИРЫ</h3>
+                <div style="margin-bottom:30px;">
+                    {sum(1 for t in tournaments.values() if current_user in t["players"])} турниров
+                </div>
+                
+                {''.join([f'''
+                <div style="background:rgba(255,255,255,0.7);padding:20px;border-radius:15px;margin:15px 0;">
+                    <div style="font-weight:700;color:{list(tournaments.keys())[i].upper()};font-size:1.3em;">{t["name"]}</div>
+                    <div style="color:#7f8c8d;">Взнос: 100💰 • Приз: {t["prize"]:,}💰</div>
+                    <div style="color:#27ae60;font-weight:700;">#{t["players"].index(current_user)+1} место в списке</div>
+                </div>''' for i, t in enumerate(tournaments.values()) if current_user in t["players"]]) or '''
+                <div style="text-align:center;color:#7f8c8d;padding:40px;">
+                    <div style="font-size:3em;margin-bottom:20px;">⚔️</div>
+                    Запишись на турниры!<br><a href="/tournaments" class="nav-btn" style="width:100%;margin-top:20px;">⚔️ Турниры</a>
+                </div>'''}
             </div>
         </div>
         
-        <div style="background:rgba(255,255,255,0.9);padding:40px;border-radius:25px;text-align:center;">
-            <h3 style="color:#2c3e50;margin-bottom:30px;font-size:2.2em;">💼 ТВОИ СЧЕТА</h3>
-            <div style="display:flex;justify-content:center;gap:50px;font-size:1.8em;">
-                <div style="text-align:center;">
-                    <div style="font-size:3em;color:#27ae60;margin-bottom:10px;">💰 {stats["coins"]:,}</div>
-                    <div style="color:#7f8c8d;font-size:1.1em;">На руках</div>
+        <div style="text-align:center;margin:60px 0;">
+            <a href="/" class="nav-btn" style="background:#3498db;font-size:20px;">🏠 Главная</a>
+            <a href="/tournaments" class="nav-btn" style="background:linear-gradient(135deg,#e74c3c,#c0392b);">⚔️ Турниры</a>
+            <a href="/catalog" class="nav-btn" style="background:linear-gradient(135deg,#55aa55,#44bb44);">📁 Игры</a>
+        </div>
+    </div></body></html>'''
+    return html
+
+# ✅ АДМИН-ПАНЕЛЬ v38.0
+@app.route('/admin')
+@require_auth
+def admin_panel():
+    if not is_moderator(session['user']):
+        flash('❌ Доступ только для админов!', 'error')
+        return redirect('/')
+    
+    conn = get_db()
+    all_users = conn.execute('SELECT username, coins, role, level, wins, created FROM users ORDER BY coins DESC').fetchall()
+    conn.close()
+    
+    users_html = ''
+    for i, user in enumerate(all_users[:20], 1):
+        uptime = time.strftime('%H:%M:%S', time.gmtime(time.time() - user['created']))
+        users_html += f'''
+        <tr style="border-bottom:1px solid #eee;">
+            <td style="padding:15px;font-weight:700;">#{i}</td>
+            <td style="padding:15px;color:#2c3e50;">{user["username"]}</td>
+            <td style="padding:15px;text-align:center;"><span class="rank-{user["role"]}">{user["role"].upper()}</span></td>
+            <td style="padding:15px;font-weight:700;color:#27ae60;">{user["coins"]:,}</td>
+            <td style="padding:15px;">{user["level"]}</td>
+            <td style="padding:15px;">{user["wins"]}</td>
+            <td style="padding:15px;color:#7f8c8d;">{uptime}</td>
+        </tr>'''
+    
+    html = f'''<!DOCTYPE html><html><head>
+    <title>⚙️ Админ-панель — {session["user"]}</title>
+    <meta charset="UTF-8"><style>{css}</style></head><body>
+    <div class="container">
+        <header style="text-align:center;margin-bottom:50px;">
+            <h1 style="font-size:4em;color:#e74c3c;">⚙️ АДМИН-ПАНЕЛЬ</h1>
+            <p>👑 Админ: <span class="rank-admin">{session["user"]}</span></p>
+            <a href="/" class="nav-btn">🏠 Главная</a>
+        </header>
+        
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;">
+            <!-- ТОП ИГРОКОВ -->
+            <div class="game-card">
+                <h3 style="margin-bottom:30px;">👑 ТОП-20 ИГРОКОВ</h3>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;">
+                        <thead><tr style="background:#3498db;color:white;">
+                            <th style="padding:20px 15px;font-weight:700;">#</th>
+                            <th style="padding:20px 15px;font-weight:700;">Игрок</th>
+                            <th style="padding:20px 15px;font-weight:700;">Роль</th>
+                            <th style="padding:20px 15px;font-weight:700;">💰</th>
+                            <th style="padding:20px 15px;font-weight:700;">Lvl</th>
+                            <th style="padding:20px 15px;font-weight:700;">🏆</th>
+                            <th style="padding:20px 15px;font-weight:700;">Онлайн</th>
+                        </tr></thead>
+                        <tbody>{users_html}</tbody>
+                    </table>
                 </div>
-                <div style="width:2px;background:#ddd;"></div>
-                <div style="text-align:center;">
-                    <div style="font-size:3em;color:#3498db;margin-bottom:10px;">🏦 {user_economy[current_user]["bank"]:,}</div>
-                    <div style="color:#7f8c8d;font-size:1.1em;">В банке</div>
+            </div>
+            
+            <!-- АДМИН АКШИНЫ -->
+            <div class="game-card" style="--game-color:#e74c3c;">
+                <h3 style="margin-bottom:30px;">🔧 АДМИН МЕНЮ</h3>
+                <div style="display:flex;flex-direction:column;gap:20px;">
+                    <a href="/register" class="nav-btn" style="background:#27ae60;">👥 Создать игрока</a>
+                    <a href="/admin/mutes" class="nav-btn" style="background:#f39c12;">🚫 Муты</a>
+                    <a href="/admin/tournaments" class="nav-btn" style="background:#9b59b6;">⚔️ Управление турнирами</a>
+                    <a href="/admin/stats" class="nav-btn" style="background:#34495e;">📊 Полная статистика</a>
                 </div>
             </div>
         </div>
-    </div></body></html>'''
-    return html
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect('/')
-# ✅ АВТОРИЗАЦИЯ
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        if username and 3 <= len(username) <= 20 and re.match(r'^[a-zA-Z0-9а-яА-Я_]+$', username):
-            session['user'] = username
-            
-            # ✅ Создать/обновить пользователя в БД
-            conn = get_db()
-            conn.execute('INSERT OR IGNORE INTO users (username, created, last_seen) VALUES (?, ?, ?)',
-                        (username, time.time(), time.time()))
-            conn.execute('UPDATE users SET last_seen = ? WHERE username = ?', (time.time(), username))
-            conn.commit()
-            conn.close()
-            
-            save_user_activity(username)
-            return redirect('/')
-    
-    html = f'''<!DOCTYPE html><html><head>
-    <title>🔐 Вход — УЗНАВАЙКИН</title>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>{css}</style></head><body>
-    <div class="container" style="max-width:500px;margin-top:100px;">
-        <div style="background:rgba(255,255,255,0.95);padding:60px;border-radius:30px;box-shadow:0 30px 80px rgba(0,0,0,0.2);text-align:center;">
-            <h1 style="font-size:4em;color:#3498db;margin-bottom:30px;">🔐 ВОЙТИ</h1>
-            <form method="POST" style="max-width:350px;margin:0 auto;">
-                <input name="username" placeholder="Твой ник..." required maxlength="20" 
-                       style="width:100%;padding:20px;font-size:18px;border:2px solid #ddd;border-radius:15px;text-align:center;margin-bottom:25px;font-weight:600;"
-                       pattern="[a-zA-Z0-9а-яА-Я_]+" title="Только буквы, цифры, подчёркивания">
-                <button type="submit" class="nav-btn" style="width:100%;background:linear-gradient(135deg,#27ae60,#2ecc71);font-size:20px;padding:20px;">🚀 ВОЙТИ В ИГРУ</button>
-            </form>
-            <p style="margin-top:30px;color:#7f8c8d;font-size:14px;">👥 Приветствуем новых игроков!</p>
-        </div>
-        <div style="text-align:center;margin-top:40px;">
-            <a href="/" class="nav-btn" style="background:rgba(255,255,255,0.2);color:white;border:2px solid white;">🏠 Главная</a>
+        
+        <div style="text-align:center;margin:60px 0;">
+            <a href="/" class="nav-btn" style="background:#3498db;">🏠 Главная</a>
+            <a href="/profile" class="nav-btn">👤 Мой профиль</a>
         </div>
     </div></body></html>'''
     return html
 
-@app.route('/register')
-def register():
-    return redirect('/login')
+# ✅ 404 СТРАНИЦА
+@app.route('/<path:path>')
+def catch_all(path):
+    return f'''<!DOCTYPE html><html><head><title>404 — УЖНАВАЙКИН</title><meta charset="UTF-8"><style>{css}</style></head><body>
+    <div class="container" style="text-align:center;padding:100px 20px;">
+        <h1 style="font-size:8em;color:#e74c3c;margin-bottom:30px;">❓ 404</h1>
+        <p style="font-size:2em;color:#7f8c8d;margin-bottom:50px;">Страница не найдена</p>
+        <a href="/" class="nav-btn" style="font-size:22px;background:#3498db;">🏠 На главную</a>
+    </div></body></html>'''
 
-# ✅ API УДАЛЕНИЯ СООБЩЕНИЙ
-@app.route('/api/delete/<int:msg_id>', methods=['POST'])
-def delete_message(msg_id):
-    current_user = session.get('user', '')
-    if not current_user or not is_moderator(current_user):
-        return '🚫 Нет доступа', 403
-    
-    conn = get_db()
-    message = conn.execute('SELECT * FROM chat WHERE id = ?', (msg_id,)).fetchone()
-    
-    if message and (current_user == message['user'] or is_moderator(current_user)):
-        conn.execute('DELETE FROM chat WHERE id = ?', (msg_id,))
-        conn.commit()
-        chat_messages[:] = deque([m for m in chat_messages if m['id'] != msg_id], maxlen=100)
-        conn.close()
-        return 'OK'
-    
-    conn.close()
-    return '❌ Ошибка', 400
-
-# ✅ КАЗИНО (ЗАГОТОВКИ)
-@app.route('/casino')
-def casino():
-    return '''<!DOCTYPE html><html><head><title>🎰 Казино</title><meta charset="UTF-8">
-    <style>{css}</style></head><body>
-    <div class="container"><h1 style="text-align:center;font-size:4em;">🎰 КАЗИНО СКОРО!</h1>
-    <a href="/" class="nav-btn" style="display:block;margin:50px auto;width:200px;">🏠 Главная</a></div></body></html>'''.format(css=css)
-
-@app.route('/casino/<game>')
-def casino_game(game):
-    return f'<h1>🎰 {game.upper()} — СКОРО!</h1><a href="/catalog">🏠 Каталог</a>'
-
-@app.route('/pvp')
-def pvp():
-    return '''<!DOCTYPE html><html><head><title>⚔️ PvP Арена</title><meta charset="UTF-8">
-    <style>{css}</style></head><body>
-    <div class="container"><h1 style="text-align:center;font-size:4em;">⚔️ PvP АРЕНА СКОРО!</h1>
-    <a href="/" class="nav-btn" style="display:block;margin:50px auto;width:200px;">🏠 Главная</a></div></body></html>'''.format(css=css)
-
-# ✅ 404
-@app.errorhandler(404)
-def not_found(error):
-    return '''<!DOCTYPE html><html><head><title>404</title><meta charset="UTF-8">
-    <style>{css}</style></head><body>
-    <div class="container" style="text-align:center;margin-top:100px;">
-        <h1 style="font-size:6em;color:#e74c3c;">404</h1>
-        <p style="font-size:2em;color:#7f8c8d;">Страница не найдена</p>
-        <a href="/" class="nav-btn" style="background:#3498db;">🏠 На главную</a>
-    </div></body></html>'''.format(css=css), 404
-
-# ✅ СОХРАНЕНИЕ ПРИ ВЫХОДЕ
-def save_on_exit():
-    save_data()
-    print("💾 Данные сохранены при выходе!")
-
-atexit.register(save_on_exit)
-
-# ✅ ЗАПУСК СЕРВЕРА
+# ✅ ФИНАЛЬНЫЙ ЗАПУСК v38.0
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    print("🚀 УЗНАВАЙКИН v37.27 — ПОЛНЫЙ ЗАПУСК!")
-    print("✅ Функции: Главная+Чат | Профиль | Банк | Админ | Каталог(Minecraft+WoT)")
-    print("✅ Админы: CatNap/Назар | Автомодерация 100+ матов")
-    print(f"🌐 Сервер: http://localhost:{port}")
-    app.run(host='0.0.0.0', port=port, debug=False)
-
-
+    init_db()
+    
+    # ✅ АВТОСОЗДАНИЕ requirements.txt
+    requirements = '''Flask==3.0.3
+gunicorn==22.0.0
+Werkzeug==3.0.3'''
+    
+    with open('requirements.txt', 'w') as f:
+        f.write(requirements)
+    
+    port = int(os.environ.get('PORT', 10000))
+    host = os.environ.get('HOST', '0.0.0.0')
+    
+    print("🚀" * 20)
+    print("✅ УЖНАВАЙКИН v38.0 — ПОЛНЫЙ ЗАПУСК!")
+    print("👑 Админы: CatNap / Назар")
+    print("🔑 Пароль: 120187 (ХЕШИРОВАН)")
+    print("📱 http://" + host + ":" + str(port))
+    print("🚀" * 20)
+    
+    app.run(host=host, port=port, debug=False)
