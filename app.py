@@ -460,7 +460,7 @@ def index():
         <!-- ✅ ТУРНИРЫ -->
         <div class="tournament-banner">
             <h3>⚔️ ТУРНИР НЕДЕЛИ</h3>
-            <p>🏆 <b>Лидер:</b> {list(tournaments['leaderboard'].keys())[0] if tournaments['leaderboard'] else '—'}</p>
+            <p>🏆 <b>Лидер:</b> {list(tournaments.get('leaderboard', {}).keys())[0] if tournaments.get('leaderboard', {}) else '—'}</p>
             <a href="/tournaments" class="nav-btn" style="background:rgba(255,255,255,0.3);border:2px solid white;color:white;">⚔️ Присоединиться</a>
         </div>
 
@@ -895,4 +895,5 @@ if __name__ == '__main__':
     app.run(host='0.0.0.0', port=port, debug=False)
 
 print("🚀 УЗНАВАЙКИН v37.19 = ДЕПЛОЙ И ТЕСТИРУЙ!")
+
 
