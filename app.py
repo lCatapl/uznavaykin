@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# 🚀 УЗНАВАЙКИН v37.27 — ЧАСТЬ 1/3 (ТОЛЬКО МАЙНКРАФТ + WOT)
-import os, time, random, hashlib, re, sqlite3, json, requests
+# 🚀 УЖНАВАЙКИН v37.29 — Render.com compatible
+import os, time, random, hashlib, re, sqlite3, json  # ✅ УБРАЛ requests
 from datetime import datetime, timedelta
 from flask import Flask, request, render_template_string, session, redirect, url_for
 from collections import defaultdict, deque
@@ -802,4 +802,5 @@ if __name__ == '__main__':
     print("✅ Админы: CatNap/Назар | Автомодерация 100+ матов")
     print(f"🌐 Сервер: http://localhost:{port}")
     app.run(host='0.0.0.0', port=port, debug=False)
+
 
